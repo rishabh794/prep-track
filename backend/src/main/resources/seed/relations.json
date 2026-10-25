@@ -17,11 +17,171 @@
   },
   {
     "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "739",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "496",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Next Greater Element I teaches the fundamental monotonic stack pattern used in Daily Temperatures."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "239",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "739",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Daily Temperatures teaches monotonic ordering needed for maintaining deque maximums in Sliding Window Maximum."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
     "sourceExternalId": "15",
     "targetPlatform": "LEETCODE",
     "targetExternalId": "1",
     "relationType": "VARIANT",
     "notes": "3Sum extends Two Sum using an outer loop with two-pointer convergence."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "15",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "167",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Two Sum II teaches the sorted two-pointer subroutine used inside 3Sum."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "167",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "1",
+    "relationType": "VARIANT",
+    "notes": "Two Sum II solves Two Sum on sorted input using two pointers instead of a hash map."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "11",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "125",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Valid Palindrome introduces converging two-pointer inward stepping used in Container With Most Water."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "42",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "11",
+    "relationType": "VARIANT",
+    "notes": "Trapping Rain Water and Container With Most Water both calculate bounded areas between vertical height lines."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "49",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "242",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Valid Anagram introduces character frequency counting used as group keys in Group Anagrams."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "347",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "217",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Contains Duplicate teaches hash map frequency construction before finding Top K Frequent Elements."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "128",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "217",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Contains Duplicate introduces hash set lookups needed to identify streak starts in Longest Consecutive Sequence."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "238",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "1",
+    "relationType": "VARIANT",
+    "notes": "Product of Array Except Self uses prefix/suffix scans similar to complementary element lookups in Two Sum."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "3",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "121",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Best Time to Buy and Sell Stock introduces tracking a dynamic left boundary in a window."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "424",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "3",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Longest Substring Without Repeating Characters teaches variable window expansion and contraction."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "76",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "3",
+    "relationType": "VARIANT",
+    "notes": "Minimum Window Substring generalizes the sliding window technique from Longest Substring Without Repeating Characters."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "76",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "424",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Character Replacement teaches window validity checking with character frequencies before tackling Minimum Window Substring."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "33",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "704",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Binary Search is required to master search space halving before attempting Search in Rotated Sorted Array."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "153",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "704",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Binary Search is required to identify inflection boundary conditions in Find Minimum in Rotated Sorted Array."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "153",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "33",
+    "relationType": "VARIANT",
+    "notes": "Find Minimum in Rotated Sorted Array isolates the rotation inflection point of Search in Rotated Sorted Array."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "875",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "704",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Koko Eating Bananas applies binary search on the answer space rather than over an explicit input array."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "21",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "206",
+    "relationType": "VARIANT",
+    "notes": "Merge Two Sorted Lists builds on pointer manipulation and dummy nodes introduced in Reverse Linked List."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "141",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "206",
+    "relationType": "VARIANT",
+    "notes": "Linked List Cycle introduces two-pointer fast/slow traversal over singly linked lists."
   },
   {
     "sourcePlatform": "LEETCODE",
@@ -33,18 +193,50 @@
   },
   {
     "sourcePlatform": "LEETCODE",
-    "sourceExternalId": "33",
+    "sourceExternalId": "322",
     "targetPlatform": "LEETCODE",
-    "targetExternalId": "704",
-    "relationType": "VARIANT",
-    "notes": "Search in Rotated Sorted Array adapts standard Binary Search by checking which half maintains sorted order."
+    "targetExternalId": "70",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Climbing Stairs teaches building optimal solutions from previous subproblems before tackling Coin Change."
   },
   {
     "sourcePlatform": "LEETCODE",
-    "sourceExternalId": "76",
+    "sourceExternalId": "322",
     "targetPlatform": "LEETCODE",
-    "targetExternalId": "3",
+    "targetExternalId": "198",
     "relationType": "VARIANT",
-    "notes": "Minimum Window Substring generalizes the variable sliding window technique from Longest Substring Without Repeating Characters."
+    "notes": "Coin Change extends 1D subproblem minimization with multiple coin transition choices similar to House Robber."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "300",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "70",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Climbing Stairs introduces optimal substructure needed for Longest Increasing Subsequence."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "1143",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "300",
+    "relationType": "VARIANT",
+    "notes": "Longest Common Subsequence generalizes the 1D subsequence recurrence of LIS to a 2D grid comparison."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "53",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "121",
+    "relationType": "VARIANT",
+    "notes": "Maximum Subarray (Kadane's algorithm) is closely related to tracking running window extrema in Best Time to Buy and Sell Stock."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "207",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "200",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Number of Islands teaches graph traversal before handling cycle detection in Course Schedule."
   }
 ]

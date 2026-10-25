@@ -42,7 +42,8 @@ public class SeedDataLoader implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         if (patternRepo.count() > 0) {
-            log.info("Database already seeded. Skipping seed data loading.");
+            log.info("Database already seeded. Checking for missing relations...");
+            loadMissingRelations();
             return;
         }
 
@@ -184,6 +185,38 @@ public class SeedDataLoader implements CommandLineRunner {
 
         sheetProblemRepo.saveAll(sheetProblems);
         log.info("Loaded sheet '{}' with {} problems", name, sheetProblems.size());
+    }
+
+    private void loadMissingRelations() {
+        try {
+            List<RelationSeedDto> relationSeeds = loadJson("seed/relations.json", new TypeReference<List<RelationSeedDto>>() {});
+            int addedCount = 0;
+            for (RelationSeedDto rel : relationSeeds) {
+                Optional<ProblemSource> srcOpt = sourceRepo.findByPlatformAndExternalId(rel.sourcePlatform(), rel.sourceExternalId());
+                Optional<ProblemSource> tgtOpt = sourceRepo.findByPlatformAndExternalId(rel.targetPlatform(), rel.targetExternalId());
+                if (srcOpt.isPresent() && tgtOpt.isPresent()) {
+                    Problem src = srcOpt.get().getProblem();
+                    Problem tgt = tgtOpt.get().getProblem();
+                    if (!relationRepo.existsBySourceProblemIdAndTargetProblemId(src.getId(), tgt.getId())) {
+                        relationRepo.save(ProblemRelation.builder()
+                                .sourceProblem(src)
+                                .targetProblem(tgt)
+                                .relationType(rel.relationType())
+                                .reviewed(true)
+                                .notes(rel.notes())
+                                .build());
+                        addedCount++;
+                    }
+                }
+            }
+            if (addedCount > 0) {
+                log.info("Synced {} new relations. Total relations in DB: {}", addedCount, relationRepo.count());
+            } else {
+                log.info("Relations up to date (Total: {})", relationRepo.count());
+            }
+        } catch (Exception e) {
+            log.warn("Could not sync missing relations: {}", e.getMessage());
+        }
     }
 
     private <T> T loadJson(String path, TypeReference<T> typeRef) throws Exception {

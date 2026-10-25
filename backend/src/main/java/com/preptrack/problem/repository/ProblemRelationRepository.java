@@ -17,4 +17,6 @@ public interface ProblemRelationRepository extends JpaRepository<ProblemRelation
 
     @Query("SELECT pr FROM ProblemRelation pr JOIN FETCH pr.targetProblem WHERE pr.sourceProblem.id = :sourceId AND pr.relationType = :type")
     List<ProblemRelation> findBySourceProblemIdAndRelationType(@Param("sourceId") Long sourceId, @Param("type") RelationType type);
+
+    boolean existsBySourceProblemIdAndTargetProblemId(Long sourceProblemId, Long targetProblemId);
 }
