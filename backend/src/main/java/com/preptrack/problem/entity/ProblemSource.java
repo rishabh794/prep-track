@@ -26,7 +26,7 @@ public class ProblemSource {
     @Column(nullable = false, length = 30)
     private Platform platform;
 
-    @Column(name = "external_id", length = 50)
+    @Column(name = "external_id", length = 150)
     private String externalId;
 
     @Column(name = "external_url", nullable = false, length = 500)

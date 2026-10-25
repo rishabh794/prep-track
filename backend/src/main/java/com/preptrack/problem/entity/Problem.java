@@ -38,7 +38,7 @@ public class Problem {
     @Column(name = "reference_approach", columnDefinition = "TEXT")
     private String referenceApproach;
 
-    @Column(name = "optimal_complexity", length = 50)
+    @Column(name = "optimal_complexity", length = 100)
     private String optimalComplexity;
 
     @OneToMany(mappedBy = "problem", cascade = CascadeType.ALL, orphanRemoval = true)

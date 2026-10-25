@@ -1,0 +1,557 @@
+[
+  {
+    "canonicalTitle": "Two Sum",
+    "difficulty": "EASY",
+    "estimatedMinutes": 15,
+    "descriptionHint": "Find two distinct indices whose values add up to a target sum.",
+    "referenceApproach": "Use a hash map to store each number and its index. As you iterate through the array, check if target minus current element exists in the map. If found, return the pair of indices; otherwise insert the current element into the map.",
+    "optimalComplexity": "O(n) time, O(n) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "1", "url": "https://leetcode.com/problems/two-sum/", "title": "Two Sum" },
+      { "platform": "GFG", "externalId": "key-pair", "url": "https://www.geeksforgeeks.org/problems/key-pair5556/1", "title": "Key Pair" }
+    ],
+    "patterns": [
+      { "slug": "hash-map-lookup", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Contains Duplicate",
+    "difficulty": "EASY",
+    "estimatedMinutes": 10,
+    "descriptionHint": "Determine if any value appears at least twice in an integer array.",
+    "referenceApproach": "Iterate through elements adding each to a hash set. If an element is already present in the set, return true. If iteration completes without finding duplicates, return false.",
+    "optimalComplexity": "O(n) time, O(n) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "217", "url": "https://leetcode.com/problems/contains-duplicate/", "title": "Contains Duplicate" }
+    ],
+    "patterns": [
+      { "slug": "hash-map-lookup", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Valid Anagram",
+    "difficulty": "EASY",
+    "estimatedMinutes": 15,
+    "descriptionHint": "Determine if string t is an anagram of string s.",
+    "referenceApproach": "Check if lengths match. Use a fixed-size frequency array of size 26 (or hash map) to count character occurrences: increment for characters in s and decrement for characters in t. All counts must be zero.",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "242", "url": "https://leetcode.com/problems/valid-anagram/", "title": "Valid Anagram" },
+      { "platform": "GFG", "externalId": "anagram", "url": "https://www.geeksforgeeks.org/problems/anagram-1587115620/1", "title": "Anagram" }
+    ],
+    "patterns": [
+      { "slug": "hash-map-lookup", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Group Anagrams",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Group an array of strings into sublists of anagrams.",
+    "referenceApproach": "Map character count tuples (or sorted string representations) as keys in a hash map. Collect strings sharing identical keys into lists in the map values.",
+    "optimalComplexity": "O(n * k) time, O(n * k) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "49", "url": "https://leetcode.com/problems/group-anagrams/", "title": "Group Anagrams" },
+      { "platform": "GFG", "externalId": "print-anagrams-together", "url": "https://www.geeksforgeeks.org/problems/print-anagrams-together/1", "title": "Print Anagrams Together" }
+    ],
+    "patterns": [
+      { "slug": "hash-map-lookup", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Top K Frequent Elements",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Return the k most frequent elements from an integer array.",
+    "referenceApproach": "Count frequencies using a hash map. Group numbers by frequency into an array of buckets (indices represent frequency), then traverse buckets from right to left to collect the top k elements.",
+    "optimalComplexity": "O(n) time, O(n) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "347", "url": "https://leetcode.com/problems/top-k-frequent-elements/", "title": "Top K Frequent Elements" },
+      { "platform": "GFG", "externalId": "top-k-frequent-elements-in-array", "url": "https://www.geeksforgeeks.org/problems/top-k-frequent-elements-in-array/1", "title": "Top K Frequent Elements in Array" }
+    ],
+    "patterns": [
+      { "slug": "hash-map-lookup", "weight": 0.5 },
+      { "slug": "top-k-elements-heap", "weight": 0.5 }
+    ]
+  },
+  {
+    "canonicalTitle": "Product of Array Except Self",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Compute output array where output[i] equals the product of all elements except nums[i] without division.",
+    "referenceApproach": "Construct prefixes in the result array in a forward pass. In a backward pass, maintain a running suffix product and multiply with existing prefix values.",
+    "optimalComplexity": "O(n) time, O(1) extra space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "238", "url": "https://leetcode.com/problems/product-of-array-except-self/", "title": "Product of Array Except Self" },
+      { "platform": "GFG", "externalId": "product-array-puzzle", "url": "https://www.geeksforgeeks.org/problems/product-array-puzzle4525/1", "title": "Product Array Puzzle" }
+    ],
+    "patterns": [
+      { "slug": "prefix-sums", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Longest Consecutive Sequence",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Find length of the longest consecutive elements sequence in an unsorted array.",
+    "referenceApproach": "Insert all numbers into a hash set. For each number num, only start counting if (num - 1) is not in the set (identifying sequence start). Increment counter as long as (num + 1) exists in the set.",
+    "optimalComplexity": "O(n) time, O(n) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "128", "url": "https://leetcode.com/problems/longest-consecutive-sequence/", "title": "Longest Consecutive Sequence" },
+      { "platform": "GFG", "externalId": "longest-consecutive-subsequence", "url": "https://www.geeksforgeeks.org/problems/longest-consecutive-subsequence2449/1", "title": "Longest Consecutive Subsequence" }
+    ],
+    "patterns": [
+      { "slug": "hash-map-lookup", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Valid Palindrome",
+    "difficulty": "EASY",
+    "estimatedMinutes": 15,
+    "descriptionHint": "Determine if a phrase is a palindrome after converting to lowercase and stripping non-alphanumeric chars.",
+    "referenceApproach": "Maintain two pointers at left and right extremes. Skip non-alphanumeric characters. Compare characters case-insensitively; if any mismatch occurs return false.",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "125", "url": "https://leetcode.com/problems/valid-palindrome/", "title": "Valid Palindrome" }
+    ],
+    "patterns": [
+      { "slug": "two-pointer-squeeze", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Two Sum II - Input Array Is Sorted",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 20,
+    "descriptionHint": "Find two numbers in 1-indexed sorted array that add to target.",
+    "referenceApproach": "Use two pointers starting at opposite ends. Sum the values: if sum == target, return indices. If sum < target, advance left pointer. If sum > target, decrement right pointer.",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "167", "url": "https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/", "title": "Two Sum II" }
+    ],
+    "patterns": [
+      { "slug": "two-pointer-squeeze", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "3Sum",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 30,
+    "descriptionHint": "Find all unique triplets in array that sum to zero.",
+    "referenceApproach": "Sort the array. Iterate with index i from 0 to n - 3, skipping duplicates. For each i, run a two-pointer squeeze on the remaining range (i + 1 to n - 1) targeting -nums[i]. Skip duplicates after finding matches.",
+    "optimalComplexity": "O(n^2) time, O(1) extra space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "15", "url": "https://leetcode.com/problems/3sum/", "title": "3Sum" },
+      { "platform": "GFG", "externalId": "triplet-sum-in-array", "url": "https://www.geeksforgeeks.org/problems/triplet-sum-in-array-1587115621/1", "title": "Triplet Sum in Array" }
+    ],
+    "patterns": [
+      { "slug": "two-pointer-squeeze", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Container With Most Water",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Find two lines that together with the x-axis form a container holding the maximum water.",
+    "referenceApproach": "Place left and right pointers at both ends. Compute area = min(height[left], height[right]) * (right - left). Move the pointer pointing to the shorter vertical bar inward, since only a taller bar can compensate for the decreased width.",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "11", "url": "https://leetcode.com/problems/container-with-most-water/", "title": "Container With Most Water" }
+    ],
+    "patterns": [
+      { "slug": "two-pointer-squeeze", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Trapping Rain Water",
+    "difficulty": "HARD",
+    "estimatedMinutes": 45,
+    "descriptionHint": "Compute how much water an elevation map can trap after raining.",
+    "referenceApproach": "Two pointer approach: initialize left = 0, right = n - 1, left_max = 0, right_max = 0. While left < right, if height[left] < height[right], update left_max and add max(0, left_max - height[left]) to answer, left++. Else update right_max, add trapped water, right--. Alternative: monotonic decreasing stack of indices.",
+    "optimalComplexity": "O(n) time, O(1) space (two pointers) or O(n) space (monotonic stack)",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "42", "url": "https://leetcode.com/problems/trapping-rain-water/", "title": "Trapping Rain Water" },
+      { "platform": "GFG", "externalId": "trapping-rain-water", "url": "https://www.geeksforgeeks.org/problems/trapping-rain-water-1587115621/1", "title": "Trapping Rain Water" }
+    ],
+    "patterns": [
+      { "slug": "monotonic-stack", "weight": 1.0 },
+      { "slug": "two-pointer-squeeze", "weight": 0.5 }
+    ]
+  },
+  {
+    "canonicalTitle": "Best Time to Buy and Sell Stock",
+    "difficulty": "EASY",
+    "estimatedMinutes": 15,
+    "descriptionHint": "Maximize single buy-then-sell profit given daily stock prices.",
+    "referenceApproach": "Iterate through prices tracking the minimum price seen so far. At each day, calculate current profit = price - min_price, updating the max_profit if greater.",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "121", "url": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/", "title": "Best Time to Buy and Sell Stock" },
+      { "platform": "GFG", "externalId": "stock-buy-and-sell", "url": "https://www.geeksforgeeks.org/problems/stock-buy-and-sell-1587115621/1", "title": "Stock Buy and Sell" }
+    ],
+    "patterns": [
+      { "slug": "sliding-window-variable", "weight": 0.5 },
+      { "slug": "dp-kadanes", "weight": 0.5 }
+    ]
+  },
+  {
+    "canonicalTitle": "Longest Substring Without Repeating Characters",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Find length of longest contiguous substring without recurring characters.",
+    "referenceApproach": "Sliding window with hash map storing last observed index of each character. Expand right pointer; if char already seen inside current window, jump left pointer to last_index + 1. Update max length.",
+    "optimalComplexity": "O(n) time, O(min(m, n)) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "3", "url": "https://leetcode.com/problems/longest-substring-without-repeating-characters/", "title": "Longest Substring Without Repeating Characters" },
+      { "platform": "GFG", "externalId": "length-of-the-longest-substring", "url": "https://www.geeksforgeeks.org/problems/length-of-the-longest-substring3036/1", "title": "Length of Longest Substring" }
+    ],
+    "patterns": [
+      { "slug": "sliding-window-variable", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Longest Repeating Character Replacement",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 30,
+    "descriptionHint": "Find length of longest substring with same letter allowing at most k character replacements.",
+    "referenceApproach": "Sliding window tracking character frequencies and max_frequency in the window. If (window_length - max_frequency) > k, shift left pointer forward by 1, decrementing its frequency.",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "424", "url": "https://leetcode.com/problems/longest-repeating-character-replacement/", "title": "Longest Repeating Character Replacement" }
+    ],
+    "patterns": [
+      { "slug": "sliding-window-variable", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Minimum Window Substring",
+    "difficulty": "HARD",
+    "estimatedMinutes": 40,
+    "descriptionHint": "Find minimum contiguous substring of s containing all characters of string t.",
+    "referenceApproach": "Frequency map of target string t. Expand right pointer; when character matches requirement, increase count of matched unique chars. When all matched, contract left pointer while keeping window valid, recording shortest window.",
+    "optimalComplexity": "O(n + m) time, O(n + m) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "76", "url": "https://leetcode.com/problems/minimum-window-substring/", "title": "Minimum Window Substring" },
+      { "platform": "GFG", "externalId": "smallest-window-in-a-string-containing-all-the-characters-of-another-string", "url": "https://www.geeksforgeeks.org/problems/smallest-window-in-a-string-containing-all-the-characters-of-another-string-1587115621/1", "title": "Smallest Window in a String" }
+    ],
+    "patterns": [
+      { "slug": "sliding-window-variable", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Sliding Window Maximum",
+    "difficulty": "HARD",
+    "estimatedMinutes": 35,
+    "descriptionHint": "Find maximum value in every sliding window of size k.",
+    "referenceApproach": "Maintain a monotonic decreasing deque storing indices. For each element at index i: remove indices outside the window (i - k); pop smaller elements from the back; push i; append front of deque to output once i >= k - 1.",
+    "optimalComplexity": "O(n) time, O(k) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "239", "url": "https://leetcode.com/problems/sliding-window-maximum/", "title": "Sliding Window Maximum" },
+      { "platform": "GFG", "externalId": "maximum-of-all-subarrays-of-size-k", "url": "https://www.geeksforgeeks.org/problems/maximum-of-all-subarrays-of-size-k3101/1", "title": "Maximum of Subarrays of Size K" }
+    ],
+    "patterns": [
+      { "slug": "monotonic-stack", "weight": 1.0 },
+      { "slug": "sliding-window-fixed", "weight": 0.5 }
+    ]
+  },
+  {
+    "canonicalTitle": "Valid Parentheses",
+    "difficulty": "EASY",
+    "estimatedMinutes": 15,
+    "descriptionHint": "Determine if brackets string containing '()[]{}' is valid.",
+    "referenceApproach": "Use a stack. Push expected closing brackets when an opening bracket is encountered. When a closing bracket appears, pop the stack and check for exact match. Return true if stack is empty at end.",
+    "optimalComplexity": "O(n) time, O(n) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "20", "url": "https://leetcode.com/problems/valid-parentheses/", "title": "Valid Parentheses" },
+      { "platform": "GFG", "externalId": "parenthesis-checker", "url": "https://www.geeksforgeeks.org/problems/parenthesis-checker2744/1", "title": "Parenthesis Checker" }
+    ],
+    "patterns": [
+      { "slug": "parentheses-matching", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Daily Temperatures",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Find number of days to wait until a warmer temperature occurs.",
+    "referenceApproach": "Monotonic decreasing stack storing indices. Iterate through temperatures: while current temp is greater than temp at stack top index, pop and calculate wait days = current_index - popped_index.",
+    "optimalComplexity": "O(n) time, O(n) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "739", "url": "https://leetcode.com/problems/daily-temperatures/", "title": "Daily Temperatures" }
+    ],
+    "patterns": [
+      { "slug": "monotonic-stack", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Next Greater Element I",
+    "difficulty": "EASY",
+    "estimatedMinutes": 20,
+    "descriptionHint": "Find the next greater element for each value in a subset array.",
+    "referenceApproach": "Traverse the full array with a monotonic decreasing stack. Pop elements when a larger element appears, recording the next greater relationship in a hash map.",
+    "optimalComplexity": "O(n + m) time, O(n) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "496", "url": "https://leetcode.com/problems/next-greater-element-i/", "title": "Next Greater Element I" },
+      { "platform": "GFG", "externalId": "next-larger-element", "url": "https://www.geeksforgeeks.org/problems/next-larger-element-1587115620/1", "title": "Next Larger Element" }
+    ],
+    "patterns": [
+      { "slug": "monotonic-stack", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Largest Rectangle in Histogram",
+    "difficulty": "HARD",
+    "estimatedMinutes": 35,
+    "descriptionHint": "Find the area of the largest rectangle in a histogram.",
+    "referenceApproach": "Monotonic increasing stack storing pairs of (start_index, height). When a bar shorter than stack top is encountered, pop and compute area = height * (current_index - start_index). Extend start_index backward for new bar.",
+    "optimalComplexity": "O(n) time, O(n) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "84", "url": "https://leetcode.com/problems/largest-rectangle-in-histogram/", "title": "Largest Rectangle in Histogram" },
+      { "platform": "GFG", "externalId": "maximum-rectangular-area-in-a-histogram", "url": "https://www.geeksforgeeks.org/problems/maximum-rectangular-area-in-a-histogram-1587115620/1", "title": "Max Rectangular Area in Histogram" }
+    ],
+    "patterns": [
+      { "slug": "monotonic-stack", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Binary Search",
+    "difficulty": "EASY",
+    "estimatedMinutes": 15,
+    "descriptionHint": "Find index of target in sorted array in logarithmic time.",
+    "referenceApproach": "Initialize left = 0, right = n - 1. While left <= right, compute mid = left + (right - left)/2. If nums[mid] == target return mid; if nums[mid] < target set left = mid + 1; else right = mid - 1.",
+    "optimalComplexity": "O(log n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "704", "url": "https://leetcode.com/problems/binary-search/", "title": "Binary Search" },
+      { "platform": "GFG", "externalId": "binary-search", "url": "https://www.geeksforgeeks.org/problems/binary-search-1587115620/1", "title": "Binary Search" }
+    ],
+    "patterns": [
+      { "slug": "binary-search-on-answer", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Search in Rotated Sorted Array",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Find index of target in rotated sorted array of unique elements.",
+    "referenceApproach": "Modified binary search: determine which half is sorted. If nums[left] <= nums[mid], left half is sorted: check if target lies within nums[left] and nums[mid]. Otherwise right half is sorted: check if target lies within nums[mid] and nums[right].",
+    "optimalComplexity": "O(log n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "33", "url": "https://leetcode.com/problems/search-in-rotated-sorted-array/", "title": "Search in Rotated Sorted Array" },
+      { "platform": "GFG", "externalId": "search-in-a-rotated-array", "url": "https://www.geeksforgeeks.org/problems/search-in-a-rotated-array4618/1", "title": "Search in Rotated Array" }
+    ],
+    "patterns": [
+      { "slug": "binary-search-rotated", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Find Minimum in Rotated Sorted Array",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Find minimum element in rotated sorted array of unique elements.",
+    "referenceApproach": "Binary search: if nums[mid] > nums[right], the inflection point and minimum must be in the right half (left = mid + 1). Otherwise, right = mid.",
+    "optimalComplexity": "O(log n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "153", "url": "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/", "title": "Find Minimum in Rotated Sorted Array" },
+      { "platform": "GFG", "externalId": "minimum-element-in-a-sorted-and-rotated-array", "url": "https://www.geeksforgeeks.org/problems/minimum-element-in-a-sorted-and-rotated-array5007/1", "title": "Min Element in Rotated Array" }
+    ],
+    "patterns": [
+      { "slug": "binary-search-rotated", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Koko Eating Bananas",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 30,
+    "descriptionHint": "Find minimum integer eating speed k to eat all bananas within h hours.",
+    "referenceApproach": "Binary search on speed k from 1 to max(piles). For each candidate speed k, calculate total hours required: sum of ceil(pile / k). If total hours <= h, valid speed (search left: right = mid); otherwise search right (left = mid + 1).",
+    "optimalComplexity": "O(n * log(max(piles))) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "875", "url": "https://leetcode.com/problems/koko-eating-bananas/", "title": "Koko Eating Bananas" },
+      { "platform": "GFG", "externalId": "koko-eating-bananas", "url": "https://www.geeksforgeeks.org/problems/koko-eating-bananas/1", "title": "Koko Eating Bananas" }
+    ],
+    "patterns": [
+      { "slug": "binary-search-on-answer", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Reverse Linked List",
+    "difficulty": "EASY",
+    "estimatedMinutes": 15,
+    "descriptionHint": "Reverse a singly linked list iteratively in-place.",
+    "referenceApproach": "Use 3 pointers: prev (null), curr (head), next. In a loop, save curr.next, redirect curr.next = prev, advance prev = curr, advance curr = next. Return prev as new head.",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "206", "url": "https://leetcode.com/problems/reverse-linked-list/", "title": "Reverse Linked List" },
+      { "platform": "GFG", "externalId": "reverse-a-linked-list", "url": "https://www.geeksforgeeks.org/problems/reverse-a-linked-list/1", "title": "Reverse a Linked List" }
+    ],
+    "patterns": [
+      { "slug": "linked-list-reversal", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Merge Two Sorted Lists",
+    "difficulty": "EASY",
+    "estimatedMinutes": 15,
+    "descriptionHint": "Merge two sorted linked lists into one sorted linked list.",
+    "referenceApproach": "Use a dummy head node and a current pointer. While both lists have elements, append the node with the smaller value to current.next and advance that list. Append remaining non-empty tail at end.",
+    "optimalComplexity": "O(n + m) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "21", "url": "https://leetcode.com/problems/merge-two-sorted-lists/", "title": "Merge Two Sorted Lists" },
+      { "platform": "GFG", "externalId": "merge-two-sorted-linked-lists", "url": "https://www.geeksforgeeks.org/problems/merge-two-sorted-linked-lists/1", "title": "Merge Two Sorted Lists" }
+    ],
+    "patterns": [
+      { "slug": "linked-list-merge", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Linked List Cycle",
+    "difficulty": "EASY",
+    "estimatedMinutes": 15,
+    "descriptionHint": "Determine if a linked list contains a cycle.",
+    "referenceApproach": "Floyd's Tortoise and Hare: slow pointer moves 1 step, fast pointer moves 2 steps. If fast meets slow, a cycle exists. If fast or fast.next reaches null, no cycle exists.",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "141", "url": "https://leetcode.com/problems/linked-list-cycle/", "title": "Linked List Cycle" },
+      { "platform": "GFG", "externalId": "detect-loop-in-linked-list", "url": "https://www.geeksforgeeks.org/problems/detect-loop-in-linked-list/1", "title": "Detect Loop in Linked List" }
+    ],
+    "patterns": [
+      { "slug": "fast-slow-pointers", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Maximum Subarray",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 20,
+    "descriptionHint": "Find contiguous subarray with the largest sum (Kadane's algorithm).",
+    "referenceApproach": "Kadane's algorithm: maintain current_sum and max_sum. For each element num, current_sum = max(num, current_sum + num). Update max_sum = max(max_sum, current_sum).",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "53", "url": "https://leetcode.com/problems/maximum-subarray/", "title": "Maximum Subarray" },
+      { "platform": "GFG", "externalId": "kadanes-algorithm", "url": "https://www.geeksforgeeks.org/problems/kadanes-algorithm-1587115620/1", "title": "Kadane's Algorithm" }
+    ],
+    "patterns": [
+      { "slug": "dp-kadanes", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Climbing Stairs",
+    "difficulty": "EASY",
+    "estimatedMinutes": 15,
+    "descriptionHint": "Count distinct ways to climb n steps taking 1 or 2 steps at a time.",
+    "referenceApproach": "Fibonacci relation: ways(n) = ways(n-1) + ways(n-2). Base cases ways(1) = 1, ways(2) = 2. Track previous two variables iteratively in O(1) space.",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "70", "url": "https://leetcode.com/problems/climbing-stairs/", "title": "Climbing Stairs" },
+      { "platform": "GFG", "externalId": "count-ways-to-reach-the-nth-stair", "url": "https://www.geeksforgeeks.org/problems/count-ways-to-reach-the-nth-stair-1587115620/1", "title": "Count Ways to Reach the Nth Stair" }
+    ],
+    "patterns": [
+      { "slug": "dp-1d-linear", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "House Robber",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Determine max money robbed from houses along a street without robbing adjacent houses.",
+    "referenceApproach": "Dynamic programming: at each house i, choice is rob current (nums[i] + rob_prev2) or skip (rob_prev1). dp[i] = max(nums[i] + dp[i-2], dp[i-1]). Update two state variables in O(1) memory.",
+    "optimalComplexity": "O(n) time, O(1) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "198", "url": "https://leetcode.com/problems/house-robber/", "title": "House Robber" },
+      { "platform": "GFG", "externalId": "stickler-thief", "url": "https://www.geeksforgeeks.org/problems/stickler-theif-1587115621/1", "title": "Stickler Thief" }
+    ],
+    "patterns": [
+      { "slug": "dp-1d-linear", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Coin Change",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 30,
+    "descriptionHint": "Find fewest number of coins needed to make up a given amount.",
+    "referenceApproach": "Bottom-up 1D DP array of size amount + 1 initialized to amount + 1. dp[0] = 0. For i from 1 to amount, for each coin c: if i >= c, dp[i] = min(dp[i], 1 + dp[i - c]). Return dp[amount] if != amount + 1 else -1.",
+    "optimalComplexity": "O(amount * coins.length) time, O(amount) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "322", "url": "https://leetcode.com/problems/coin-change/", "title": "Coin Change" },
+      { "platform": "GFG", "externalId": "coin-change", "url": "https://www.geeksforgeeks.org/problems/coin-change2448/1", "title": "Coin Change" }
+    ],
+    "patterns": [
+      { "slug": "dp-unbounded-knapsack", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Longest Increasing Subsequence",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 30,
+    "descriptionHint": "Find length of the longest strictly increasing subsequence in an array.",
+    "referenceApproach": "Patience sorting with binary search: maintain an array 'tails' storing smallest tail of all increasing subsequences of various lengths. For each x in nums, binary search x in tails; replace if found or append if greater than all. Length of tails is answer.",
+    "optimalComplexity": "O(n log n) time, O(n) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "300", "url": "https://leetcode.com/problems/longest-increasing-subsequence/", "title": "Longest Increasing Subsequence" },
+      { "platform": "GFG", "externalId": "longest-increasing-subsequence", "url": "https://www.geeksforgeeks.org/problems/longest-increasing-subsequence-1587115620/1", "title": "Longest Increasing Subsequence" }
+    ],
+    "patterns": [
+      { "slug": "dp-lis", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Longest Common Subsequence",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 30,
+    "descriptionHint": "Find length of the longest common subsequence between two strings.",
+    "referenceApproach": "2D DP table where dp[i][j] represents LCS length of text1[0..i] and text2[0..j]. If text1[i] == text2[j], dp[i][j] = 1 + dp[i-1][j-1]. Otherwise, dp[i][j] = max(dp[i-1][j], dp[i][j-1]).",
+    "optimalComplexity": "O(n * m) time, O(min(n, m)) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "1143", "url": "https://leetcode.com/problems/longest-common-subsequence/", "title": "Longest Common Subsequence" },
+      { "platform": "GFG", "externalId": "longest-common-subsequence", "url": "https://www.geeksforgeeks.org/problems/longest-common-subsequence-1587115620/1", "title": "Longest Common Subsequence" }
+    ],
+    "patterns": [
+      { "slug": "dp-string-lcs", "weight": 1.0 }
+    ]
+  },
+  {
+    "canonicalTitle": "Number of Islands",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Count number of distinct 4-directionally connected islands of '1's in a grid.",
+    "referenceApproach": "Traverse grid cell by cell. When an unvisited '1' is found, increment island count and initiate BFS or DFS to sink all connected '1's by marking them '0'.",
+    "optimalComplexity": "O(rows * cols) time, O(rows * cols) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "200", "url": "https://leetcode.com/problems/number-of-islands/", "title": "Number of Islands" },
+      { "platform": "GFG", "externalId": "find-the-number-of-islands", "url": "https://www.geeksforgeeks.org/problems/find-the-number-of-islands/1", "title": "Find the Number of Islands" }
+    ],
+    "patterns": [
+      { "slug": "connected-components", "weight": 1.0 },
+      { "slug": "bfs-shortest-path", "weight": 0.5 }
+    ]
+  },
+  {
+    "canonicalTitle": "Course Schedule",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 30,
+    "descriptionHint": "Determine if you can finish all courses given prerequisite DAG constraints.",
+    "referenceApproach": "Topological sort via Kahn's algorithm: compute indegree of all vertices. Push all 0-indegree courses into queue. Pop course, decrement indegrees of neighbors, enqueue if 0. Count processed courses; if equals numCourses, return true, else cycle exists.",
+    "optimalComplexity": "O(V + E) time, O(V + E) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "207", "url": "https://leetcode.com/problems/course-schedule/", "title": "Course Schedule" },
+      { "platform": "GFG", "externalId": "course-schedule", "url": "https://www.geeksforgeeks.org/problems/course-schedule/1", "title": "Course Schedule" }
+    ],
+    "patterns": [
+      { "slug": "topological-sort-kahns", "weight": 1.0 },
+      { "slug": "dfs-cycle-detection", "weight": 0.5 }
+    ]
+  },
+  {
+    "canonicalTitle": "Merge Intervals",
+    "difficulty": "MEDIUM",
+    "estimatedMinutes": 25,
+    "descriptionHint": "Merge all overlapping intervals and return non-overlapping intervals covering all input.",
+    "referenceApproach": "Sort intervals by start time. Iterate through intervals: if current interval overlaps with the previous (start <= prev.end), merge them by updating prev.end = max(prev.end, current.end). Otherwise append current interval.",
+    "optimalComplexity": "O(n log n) time, O(n) space",
+    "sources": [
+      { "platform": "LEETCODE", "externalId": "56", "url": "https://leetcode.com/problems/merge-intervals/", "title": "Merge Intervals" },
+      { "platform": "GFG", "externalId": "overlapping-intervals", "url": "https://www.geeksforgeeks.org/problems/overlapping-intervals--170633/1", "title": "Overlapping Intervals" }
+    ],
+    "patterns": [
+      { "slug": "interval-merge", "weight": 1.0 }
+    ]
+  }
+]

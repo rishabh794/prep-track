@@ -1,0 +1,50 @@
+[
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "42",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "496",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Next Greater Element I is an easier monotonic stack warmup for Trapping Rain Water."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "84",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "739",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Daily Temperatures is an easier monotonic stack problem before attempting Largest Rectangle in Histogram."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "15",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "1",
+    "relationType": "VARIANT",
+    "notes": "3Sum extends Two Sum using an outer loop with two-pointer convergence."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "198",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "70",
+    "relationType": "EASIER_PREREQUISITE",
+    "notes": "Climbing Stairs establishes the fundamental 1D DP recurrence needed for House Robber."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "33",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "704",
+    "relationType": "VARIANT",
+    "notes": "Search in Rotated Sorted Array adapts standard Binary Search by checking which half maintains sorted order."
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "76",
+    "targetPlatform": "LEETCODE",
+    "targetExternalId": "3",
+    "relationType": "VARIANT",
+    "notes": "Minimum Window Substring generalizes the variable sliding window technique from Longest Substring Without Repeating Characters."
+  }
+]
