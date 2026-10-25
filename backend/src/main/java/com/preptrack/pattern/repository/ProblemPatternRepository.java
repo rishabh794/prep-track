@@ -15,4 +15,7 @@ public interface ProblemPatternRepository extends JpaRepository<ProblemPattern, 
 
     @Query("SELECT pp FROM ProblemPattern pp JOIN FETCH pp.pattern WHERE pp.problem.id = :problemId")
     List<ProblemPattern> findByProblemIdWithPattern(@Param("problemId") Long problemId);
+
+    @Query("SELECT pp FROM ProblemPattern pp JOIN FETCH pp.pattern WHERE pp.problem.id IN :problemIds")
+    List<ProblemPattern> findByProblemIdInWithPattern(@Param("problemIds") List<Long> problemIds);
 }
