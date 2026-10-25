@@ -78,6 +78,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Dotenv -->
+		<dependency>
+			<groupId>io.github.cdimascio</groupId>
+			<artifactId>dotenv-java</artifactId>
+			<version>3.1.0</version>
+		</dependency>
+
 		<!-- Testing -->
 		<dependency>
 			<groupId>com.h2database</groupId>
