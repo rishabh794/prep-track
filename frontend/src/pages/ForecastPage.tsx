@@ -9,6 +9,7 @@ export const ForecastPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'ALL' | TriageStatus>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchForecast = async () => {
     if (!interviewId) return;
@@ -19,7 +20,7 @@ export const ForecastPage: React.FC = () => {
       setForecast(res.data);
     } catch (err: any) {
       console.error('Failed to load forecast', err);
-      setError(err.response?.data?.message || 'Failed to load readiness forecast. Please try again.');
+      setError(err.response?.data?.message || 'Failed to load readiness forecast.');
     } finally {
       setLoading(false);
     }
@@ -31,36 +32,42 @@ export const ForecastPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-400 font-medium">Forward-simulating preparation timeline...</p>
-        </div>
+      <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+        <div style={{
+          width: '42px',
+          height: '42px',
+          borderRadius: '50%',
+          border: '4px solid rgba(99, 102, 241, 0.2)',
+          borderTopColor: 'var(--accent-primary)',
+          animation: 'spin 0.8s linear infinite'
+        }} />
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+          Forward-simulating preparation timeline to your interview date...
+        </p>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
 
   if (error || !forecast) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
-        <div className="bg-slate-900 border border-rose-800/60 rounded-xl p-8 max-w-md w-full text-center">
-          <div className="w-12 h-12 bg-rose-950/70 text-rose-400 border border-rose-800 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">
-            !
-          </div>
-          <h2 className="text-xl font-bold text-white mb-2">Unable to Load Forecast</h2>
-          <p className="text-slate-400 text-sm mb-6">{error || 'Interview forecast could not be found.'}</p>
-          <div className="flex justify-center gap-3">
-            <Link
-              to="/interviews"
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg transition-colors"
-            >
+      <div style={{ maxWidth: '500px', margin: '80px auto', padding: '0 20px', textAlign: 'center' }}>
+        <div className="glass-panel" style={{ padding: '40px 30px' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>⚠️</div>
+          <h2 style={{ fontSize: '1.4rem', color: '#fff', marginBottom: '8px' }}>Unable to Load Forecast</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px' }}>
+            {error || 'Interview forecast could not be found.'}
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+            <Link to="/interviews" className="btn btn-secondary btn-sm">
               Back to Interviews
             </Link>
-            <button
-              onClick={fetchForecast}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              Retry
+            <button onClick={fetchForecast} className="btn btn-primary btn-sm">
+              Retry Simulation
             </button>
           </div>
         </div>
@@ -69,239 +76,332 @@ export const ForecastPage: React.FC = () => {
   }
 
   const overallPercent = Math.round((forecast.overallReadiness || 0) * 100);
-  const readinessColor =
-    overallPercent >= 75
-      ? 'text-emerald-400 border-emerald-500'
-      : overallPercent >= 50
-      ? 'text-amber-400 border-amber-500'
-      : 'text-rose-400 border-rose-500';
-
-  const readinessBg =
-    overallPercent >= 75
-      ? 'from-emerald-500/10 to-teal-500/5'
-      : overallPercent >= 50
-      ? 'from-amber-500/10 to-yellow-500/5'
-      : 'from-rose-500/10 to-orange-500/5';
-
-  const filteredProjections = forecast.patternProjections.filter((p) => {
-    if (statusFilter === 'ALL') return true;
-    return p.status === statusFilter;
-  });
-
-  const statusCounts = {
-    ALL: forecast.patternProjections.length,
-    ON_TRACK: forecast.patternProjections.filter((p) => p.status === 'ON_TRACK').length,
-    IMPROVING: forecast.patternProjections.filter((p) => p.status === 'IMPROVING').length,
-    AT_RISK: forecast.patternProjections.filter((p) => p.status === 'AT_RISK').length,
-    CONSIDER_DROPPING: forecast.patternProjections.filter((p) => p.status === 'CONSIDER_DROPPING').length,
-  };
+  const strokeDashoffset = 283 - (283 * overallPercent) / 100;
 
   const getStatusBadge = (status: TriageStatus) => {
     switch (status) {
       case 'ON_TRACK':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60">
-            <span>✅</span> ON TRACK
-          </span>
-        );
+        return <span className="badge badge-on-track">✅ ON TRACK</span>;
       case 'IMPROVING':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-950/80 text-sky-300 border border-sky-700/60">
-            <span>📈</span> IMPROVING
-          </span>
-        );
+        return <span className="badge badge-improving">📈 IMPROVING</span>;
       case 'AT_RISK':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-300 border border-amber-700/60">
-            <span>⚠️</span> AT RISK
-          </span>
-        );
+        return <span className="badge badge-at-risk">⚠️ AT RISK</span>;
       case 'CONSIDER_DROPPING':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-700">
-            <span>💤</span> CONSIDER DROPPING
-          </span>
-        );
+        return <span className="badge badge-consider-dropping">💤 CONSIDER DROPPING</span>;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Navigation & Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <Link
-              to="/interviews"
-              className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-indigo-400 font-medium mb-2 transition-colors"
-            >
-              ← Back to Upcoming Interviews
-            </Link>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-extrabold tracking-tight text-white">
-                Readiness Forecast — {forecast.companyName}
-              </h1>
-              <span className="px-3 py-1 bg-indigo-950/70 text-indigo-300 border border-indigo-700/50 rounded-full text-xs font-semibold">
-                {forecast.daysRemaining} days left
-              </span>
-            </div>
-            <p className="text-slate-400 text-sm mt-1">
-              Interview Date: <span className="text-slate-200 font-medium">{forecast.interviewDate}</span>
-            </p>
-          </div>
+  const filteredProjections = forecast.patternProjections.filter((p) => {
+    const matchesFilter = statusFilter === 'ALL' || p.status === statusFilter;
+    const matchesSearch = p.pattern.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
-          <button
-            onClick={fetchForecast}
-            className="self-start md:self-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
+  const statusCounts = {
+    ALL: forecast.patternProjections.length,
+    AT_RISK: forecast.patternProjections.filter((p) => p.status === 'AT_RISK').length,
+    IMPROVING: forecast.patternProjections.filter((p) => p.status === 'IMPROVING').length,
+    ON_TRACK: forecast.patternProjections.filter((p) => p.status === 'ON_TRACK').length,
+    CONSIDER_DROPPING: forecast.patternProjections.filter((p) => p.status === 'CONSIDER_DROPPING').length,
+  };
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+      {/* Top Breadcrumb & Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '32px' }}>
+        <div>
+          <Link
+            to="/interviews"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.85rem',
+              color: 'var(--text-muted)',
+              marginBottom: '10px',
+              fontWeight: 500
+            }}
           >
-            <span>⟳</span> Re-simulate
-          </button>
+            ← Back to Target Interviews
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: '2.1rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+              Readiness Forecast — {forecast.companyName}
+            </h1>
+            <span
+              className="badge"
+              style={{
+                background: 'rgba(99, 102, 241, 0.18)',
+                color: '#a5b4fc',
+                borderColor: 'rgba(99, 102, 241, 0.4)',
+                fontSize: '0.825rem',
+                padding: '4px 12px'
+              }}
+            >
+              ⏳ {forecast.daysRemaining} Days Left
+            </span>
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '6px' }}>
+            Scheduled Loop: <strong style={{ color: '#fff' }}>{forecast.interviewDate}</strong> • Forward-simulating 90m daily knapsack planner
+          </p>
         </div>
 
-        {/* Top Summary: Readiness Gauge & Recommendations Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Readiness Gauge Card */}
-          <div className={`bg-gradient-to-br ${readinessBg} bg-slate-900/90 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl`}>
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Overall Interview Readiness
-              </span>
-              <div className="mt-6 flex items-center justify-center">
-                <div className={`relative w-36 h-36 rounded-full border-8 ${readinessColor} flex flex-col items-center justify-center bg-slate-950/80 shadow-inner`}>
-                  <span className="text-4xl font-extrabold tracking-tight text-white">{overallPercent}%</span>
-                  <span className="text-xs uppercase font-semibold text-slate-400 mt-0.5">Coverage</span>
+        <button
+          onClick={fetchForecast}
+          className="btn btn-secondary btn-sm"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        >
+          <span>⟳</span> Re-simulate Timeline
+        </button>
+      </div>
+
+      {/* Top Grid: Overall Readiness Gauge + Triage Recommendations */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+        {/* Readiness Gauge Card */}
+        <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)', marginBottom: '16px' }}>
+              Overall Readiness Metric
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0' }}>
+              <div style={{ position: 'relative', width: '160px', height: '160px' }}>
+                <svg width="160" height="160" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    fill="transparent"
+                    stroke="rgba(255, 255, 255, 0.08)"
+                    strokeWidth="8"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    fill="transparent"
+                    stroke={overallPercent >= 70 ? '#10b981' : overallPercent >= 45 ? '#f59e0b' : '#f43f5e'}
+                    strokeWidth="8"
+                    strokeDasharray="283"
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dashoffset 1s ease' }}
+                  />
+                </svg>
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <span style={{ fontSize: '2.4rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>
+                    {overallPercent}%
+                  </span>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginTop: '4px' }}>
+                    Prepared
+                  </span>
                 </div>
               </div>
             </div>
-
-            <div className="mt-6 pt-4 border-t border-slate-800/80 text-xs text-slate-400 space-y-1">
-              <p>• Day-by-day simulated knapsack planner</p>
-              <p>• Memory retention decay & company pattern relevance</p>
-            </div>
           </div>
 
-          {/* Actionable Recommendations Panel */}
-          <div className="lg:col-span-2 bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-lg">🎯</span>
-              <h2 className="text-base font-bold uppercase tracking-wider text-slate-200">
-                Strategic Triage & Action Items
-              </h2>
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '16px', marginTop: '16px' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff', marginBottom: '4px' }}>
+              {overallPercent >= 75 ? '🚀 High Interview Readiness' : overallPercent >= 50 ? '⚖️ Moderate Preparedness' : '⚠️ Strategic Focus Required'}
             </div>
-
-            <div className="space-y-3">
-              {forecast.recommendations.map((rec, idx) => (
-                <div
-                  key={idx}
-                  className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-3 hover:border-slate-700 transition-colors"
-                >
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-950 text-indigo-400 border border-indigo-700/60 flex items-center justify-center text-xs font-bold">
-                    {idx + 1}
-                  </span>
-                  <p className="text-sm font-medium text-slate-200 leading-relaxed">{rec}</p>
-                </div>
-              ))}
-            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+              Weighted coverage of company patterns considering simulated problem practice and retention decay.
+            </p>
           </div>
         </div>
 
-        {/* Pattern Projections Section */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-white">Pattern Projections</h2>
-              <p className="text-slate-400 text-xs mt-0.5">
-                Current mastery vs projected skill and retention on interview day ({forecast.interviewDate})
-              </p>
-            </div>
+        {/* Strategic Triage Recommendations */}
+        <div className="glass-panel" style={{ padding: '28px', gridColumn: 'span 2' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+            <span style={{ fontSize: '1.25rem' }}>🎯</span>
+            <h2 style={{ fontSize: '1.15rem', color: '#fff', fontWeight: 700 }}>
+              Strategic Triage & Action Items
+            </h2>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {forecast.recommendations.map((rec, idx) => (
+              <div key={idx} className="triage-card">
+                <div style={{
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  background: 'var(--gradient-brand)',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  flexShrink: 0
+                }}>
+                  {idx + 1}
+                </div>
+                <div style={{ fontSize: '0.9rem', color: '#e2e8f0', lineHeight: 1.5, fontWeight: 500 }}>
+                  {rec}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Pattern Projections Matrix */}
+      <div className="glass-panel" style={{ padding: '28px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.25rem', color: '#fff', fontWeight: 700, marginBottom: '4px' }}>
+              Pattern Mastery Projections
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.825rem' }}>
+              Estimated skill acquisition and retention score at interview date ({forecast.interviewDate})
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* Search Input */}
+            <input
+              type="text"
+              placeholder="Search patterns..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="form-input"
+              style={{ width: '200px', padding: '6px 12px', fontSize: '0.825rem' }}
+            />
 
             {/* Filter Pills */}
-            <div className="flex flex-wrap gap-2">
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {(['ALL', 'AT_RISK', 'IMPROVING', 'ON_TRACK', 'CONSIDER_DROPPING'] as const).map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    statusFilter === status
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                  }`}
+                  className={`filter-pill ${statusFilter === status ? 'active' : ''}`}
                 >
-                  {status.replace('_', ' ')} ({statusCounts[status]})
+                  {status === 'ALL' ? 'All' : status.replace('_', ' ')} ({statusCounts[status]})
                 </button>
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Projections Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase font-semibold tracking-wider">
-                  <th className="py-3 px-4">Pattern</th>
-                  <th className="py-3 px-4">Current Skill</th>
-                  <th className="py-3 px-4">Projected Skill</th>
-                  <th className="py-3 px-4">Current Retention</th>
-                  <th className="py-3 px-4">Projected Retention</th>
-                  <th className="py-3 px-4 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-sm">
-                {filteredProjections.map((p, idx) => {
-                  const curSkillPct = Math.round(p.currentSkill * 100);
-                  const projSkillPct = Math.round(p.projectedSkill * 100);
-                  const curRetPct = Math.round(p.currentRetention * 100);
-                  const projRetPct = Math.round(p.projectedRetention * 100);
-                  const skillDelta = projSkillPct - curSkillPct;
+        {/* Table */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: '0.775rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <th style={{ padding: '12px 14px' }}>DSA Pattern</th>
+                <th style={{ padding: '12px 14px' }}>Current Skill</th>
+                <th style={{ padding: '12px 14px' }}>Projected Skill</th>
+                <th style={{ padding: '12px 14px' }}>Current Retention</th>
+                <th style={{ padding: '12px 14px' }}>Projected Retention</th>
+                <th style={{ padding: '12px 14px', textAlign: 'right' }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProjections.map((p, idx) => {
+                const curSkillPct = Math.round(p.currentSkill * 100);
+                const projSkillPct = Math.round(p.projectedSkill * 100);
+                const curRetPct = Math.round(p.currentRetention * 100);
+                const projRetPct = Math.round(p.projectedRetention * 100);
+                const delta = projSkillPct - curSkillPct;
 
-                  return (
-                    <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-3.5 px-4 font-semibold text-slate-100">{p.pattern}</td>
-                      <td className="py-3.5 px-4 text-slate-300">
-                        <div className="flex items-center gap-2">
-                          <span className="w-10 font-mono text-xs">{curSkillPct}%</span>
-                          <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-slate-400 h-full rounded-full" style={{ width: `${curSkillPct}%` }} />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className="w-10 font-mono text-xs font-bold text-white">{projSkillPct}%</span>
-                          <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${
-                                projSkillPct >= 75 ? 'bg-emerald-400' : projSkillPct >= 50 ? 'bg-sky-400' : 'bg-amber-400'
-                              }`}
-                              style={{ width: `${projSkillPct}%` }}
-                            />
-                          </div>
-                          {skillDelta > 0 && (
-                            <span className="text-[11px] font-semibold text-emerald-400">+{skillDelta}%</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-slate-400">{curRetPct}%</td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-slate-300">
-                        <span className={projRetPct >= 70 ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
-                          {projRetPct}%
+                return (
+                  <tr
+                    key={idx}
+                    style={{
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                      transition: 'background 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <td style={{ padding: '14px', fontWeight: 600, color: '#fff' }}>
+                      {p.pattern}
+                    </td>
+
+                    {/* Current Skill */}
+                    <td style={{ padding: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', width: '36px', color: 'var(--text-muted)' }}>
+                          {curSkillPct}%
                         </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right">{getStatusBadge(p.status)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <div className="progress-bar-bg" style={{ width: '70px' }}>
+                          <div
+                            className="progress-bar-fill"
+                            style={{
+                              width: `${curSkillPct}%`,
+                              background: 'rgba(255, 255, 255, 0.4)'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </td>
 
-            {filteredProjections.length === 0 && (
-              <div className="text-center py-10 text-slate-500 text-sm">
-                No patterns matching status filter <span className="font-semibold">{statusFilter}</span>.
-              </div>
-            )}
-          </div>
+                    {/* Projected Skill */}
+                    <td style={{ padding: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 700, width: '36px', color: '#fff' }}>
+                          {projSkillPct}%
+                        </span>
+                        <div className="progress-bar-bg" style={{ width: '70px' }}>
+                          <div
+                            className="progress-bar-fill"
+                            style={{
+                              width: `${projSkillPct}%`,
+                              background: projSkillPct >= 75 ? 'var(--easy-color)' : projSkillPct >= 50 ? 'var(--accent-cyan)' : 'var(--medium-color)'
+                            }}
+                          />
+                        </div>
+                        {delta > 0 && (
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#34d399', fontFamily: 'var(--font-mono)' }}>
+                            +{delta}%
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Current Retention */}
+                    <td style={{ padding: '14px', fontFamily: 'var(--font-mono)', fontSize: '0.825rem', color: 'var(--text-dim)' }}>
+                      {curRetPct}%
+                    </td>
+
+                    {/* Projected Retention */}
+                    <td style={{ padding: '14px' }}>
+                      <span style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.825rem',
+                        fontWeight: projRetPct >= 65 ? 700 : 500,
+                        color: projRetPct >= 65 ? '#34d399' : 'var(--text-muted)'
+                      }}>
+                        {projRetPct}%
+                      </span>
+                    </td>
+
+                    {/* Status Badge */}
+                    <td style={{ padding: '14px', textAlign: 'right' }}>
+                      {getStatusBadge(p.status)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {filteredProjections.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              No patterns matching the selected filter.
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
+export default ForecastPage;
