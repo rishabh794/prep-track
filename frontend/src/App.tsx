@@ -10,6 +10,7 @@ import InterviewsPage from './pages/InterviewsPage';
 import SettingsPage from './pages/SettingsPage';
 import TodayPage from './pages/TodayPage';
 import { ForecastPage } from './pages/ForecastPage';
+import SimulatorPage from './pages/SimulatorPage';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -105,6 +106,7 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+          <Route path="/simulator" element={<ProtectedRoute><SimulatorPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

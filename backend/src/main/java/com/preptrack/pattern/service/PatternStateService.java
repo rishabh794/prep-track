@@ -61,26 +61,10 @@ public class PatternStateService {
         for (ProblemPattern pp : problemPatterns) {
             Pattern pattern = pp.getPattern();
             double linkWeight = pp.getWeight() != null ? pp.getWeight() : 1.0;
-            double delta = 0.1 * linkWeight;
 
             UserPatternState state = getOrCreatePatternState(user, pattern);
             double skillBefore = state.getSkill() != null ? state.getSkill() : 0.0;
-            double stability = state.getStability() != null ? state.getStability() : 1.0;
-
-            if (outcome == AttemptOutcome.SOLVED_INDEPENDENTLY) {
-                state.setSkill(Math.min(1.0, skillBefore + delta));
-                state.setStability(Math.min(365.0, stability * 1.5));
-                state.setIndependentSolves((state.getIndependentSolves() != null ? state.getIndependentSolves() : 0) + 1);
-            } else if (outcome == AttemptOutcome.SOLVED_WITH_HELP) {
-                state.setSkill(Math.min(1.0, skillBefore + delta * 0.3));
-                // stability unchanged — help doesn't prove retention
-            } else if (outcome == AttemptOutcome.COULD_NOT_SOLVE) {
-                state.setSkill(Math.max(0.0, skillBefore - delta * 0.2));
-                state.setStability(Math.max(1.0, stability * 0.5));
-            }
-
-            state.setLastPracticedAt(now);
-            state.setTotalAttempts((state.getTotalAttempts() != null ? state.getTotalAttempts() : 0) + 1);
+            PatternLearningModel.apply(state, outcome, linkWeight, false, now);
 
             UserPatternState saved = userPatternStateRepository.save(state);
 
@@ -108,20 +92,12 @@ public class PatternStateService {
 
             UserPatternState state = getOrCreatePatternState(user, pattern);
             double skillBefore = state.getSkill() != null ? state.getSkill() : 0.0;
-            double stability = state.getStability() != null ? state.getStability() : 1.0;
-
-            if (grade == com.preptrack.ai.entity.RecallGrade.PASS) {
-                state.setStability(Math.min(365.0, stability * 1.5));
-                state.setIndependentSolves((state.getIndependentSolves() != null ? state.getIndependentSolves() : 0) + 1);
-            } else if (grade == com.preptrack.ai.entity.RecallGrade.PARTIAL) {
-                state.setSkill(Math.min(1.0, skillBefore + 0.03 * linkWeight));
-            } else if (grade == com.preptrack.ai.entity.RecallGrade.FAIL) {
-                state.setSkill(Math.max(0.0, skillBefore - 0.02 * linkWeight));
-                state.setStability(Math.max(1.0, stability * 0.5));
-            }
-
-            state.setLastPracticedAt(now);
-            state.setTotalAttempts((state.getTotalAttempts() != null ? state.getTotalAttempts() : 0) + 1);
+            AttemptOutcome observedOutcome = switch (grade) {
+                case PASS -> AttemptOutcome.SOLVED_INDEPENDENTLY;
+                case PARTIAL -> AttemptOutcome.SOLVED_WITH_HELP;
+                case FAIL -> AttemptOutcome.COULD_NOT_SOLVE;
+            };
+            PatternLearningModel.apply(state, observedOutcome, linkWeight, true, now);
 
             UserPatternState saved = userPatternStateRepository.save(state);
 

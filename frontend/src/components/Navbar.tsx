@@ -69,6 +69,9 @@ export default function Navbar() {
 
         {/* Navigation Links */}
         <nav style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {user && <Link to="/simulator" style={{ padding: '8px 14px', borderRadius: 'var(--radius-sm)',
+            fontSize: '0.9rem', fontWeight: 600, color: isActive('/simulator') ? '#fff' : 'var(--text-muted)',
+            background: isActive('/simulator') ? 'rgba(99, 102, 241, 0.15)' : 'transparent' }}>Simulator</Link>}
           {user && (
             <Link
               to="/today"

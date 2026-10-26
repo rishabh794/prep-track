@@ -1,0 +1,22 @@
+.simulator-page { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+.simulator-page h1 { font-size: 2rem; margin-bottom: 12px; }
+.simulator-page h2 { font-size: 1.4rem; margin-bottom: 12px; }
+.simulator-page h3 { margin: 28px 0 12px; }
+.simulator-page p { color: var(--text-muted); margin: 12px 0; }
+.simulator-panel { padding: 24px; margin-top: 24px; }
+.simulator-panel fieldset { border: 0; padding: 0; min-width: 0; }
+.simulator-panel legend { font-weight: 700; margin-bottom: 18px; }
+.simulator-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; }
+.simulator-fields label { display: flex; flex-direction: column; gap: 8px; font-size: .9rem; }
+.simulator-fields input, .simulator-fields select { width: 100%; }
+.simulator-note { font-size: .85rem; }
+.simulator-actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+.simulator-table-scroll { overflow-x: auto; }
+.simulator-page table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
+.simulator-page th, .simulator-page td { padding: 12px; border-bottom: 1px solid var(--border-subtle); }
+.simulator-page thead { color: var(--text-muted); }
+.simulator-highlight { background: rgba(99, 102, 241, .12); }
+.simulator-page ul { padding-left: 24px; margin: 16px 0; }
+.simulator-page li { margin: 10px 0; }
+.simulator-page summary { cursor: pointer; margin-top: 24px; }
+.simulator-page .simulator-error { color: #fda4af; }
