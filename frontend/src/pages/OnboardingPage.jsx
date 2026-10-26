@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 
 export default function OnboardingPage() {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const searchParams = new URLSearchParams(location.search);
+  const force = searchParams.get('force') === 'true';
+
+  useEffect(() => {
+    if (user?.settings?.onboardingComplete && !force) {
+      navigate('/settings', { replace: true });
+    }
+  }, [user, force, navigate]);
 
   const [step, setStep] = useState(1);
   const [availableSheets, setAvailableSheets] = useState([]);

@@ -19,4 +19,6 @@ public interface SheetProblemRepository extends JpaRepository<SheetProblem, Long
     Set<Long> findProblemIdsBySheetName(@Param("sheetName") String sheetName);
 
     long countBySheetId(Long sheetId);
+
+    boolean existsBySheetIdAndProblemId(Long sheetId, Long problemId);
 }

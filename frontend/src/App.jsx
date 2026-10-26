@@ -7,6 +7,7 @@ import OnboardingPage from './pages/OnboardingPage';
 import SheetsPage from './pages/SheetsPage';
 import ExploreSheetsPage from './pages/ExploreSheetsPage';
 import InterviewsPage from './pages/InterviewsPage';
+import SettingsPage from './pages/SettingsPage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -47,6 +48,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <OnboardingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
               </ProtectedRoute>
             }
           />

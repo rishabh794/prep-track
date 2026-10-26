@@ -41,93 +41,134 @@ public class SeedDataLoader implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        if (patternRepo.count() > 0) {
-            log.info("Database already seeded. Checking for missing relations...");
-            loadMissingRelations();
-            return;
-        }
-
-        log.info("Starting seed data loading...");
+        log.info("Starting optimized seed data sync...");
 
         try {
-            // 1. Load patterns
+            // 1. Ensure patterns exist
             List<Pattern> patterns = loadJson("seed/patterns.json", new TypeReference<List<Pattern>>() {});
-            patternRepo.saveAll(patterns);
-            log.info("Loaded {} patterns", patterns.size());
+            Map<String, Pattern> patternMap = new HashMap<>();
+            for (Pattern p : patternRepo.findAll()) {
+                patternMap.put(p.getSlug(), p);
+            }
+            List<Pattern> newPatterns = new ArrayList<>();
+            for (Pattern pattern : patterns) {
+                if (!patternMap.containsKey(pattern.getSlug())) {
+                    newPatterns.add(pattern);
+                }
+            }
+            if (!newPatterns.isEmpty()) {
+                List<Pattern> saved = patternRepo.saveAll(newPatterns);
+                for (Pattern p : saved) {
+                    patternMap.put(p.getSlug(), p);
+                }
+            }
+            log.info("Patterns verified. Total patterns: {}", patternMap.size());
 
-            // 2. Load problems with sources and pattern associations
+            // 2. Pre-fetch existing problems, sources, and problem-patterns
+            Map<String, Problem> problemMap = new HashMap<>();
+            for (Problem p : problemRepo.findAll()) {
+                problemMap.put(p.getCanonicalTitle(), p);
+            }
+
+            Map<String, Problem> sourceIndex = new HashMap<>();
+            for (ProblemSource ps : sourceRepo.findAllWithProblem()) {
+                sourceIndex.put(ps.getPlatform().name() + ":" + ps.getExternalId(), ps.getProblem());
+            }
+
+            Map<Long, Set<String>> existingPatternsByProblemId = new HashMap<>();
+            for (ProblemPattern pp : problemPatternRepo.findAllWithPatternAndProblem()) {
+                existingPatternsByProblemId
+                        .computeIfAbsent(pp.getProblem().getId(), k -> new HashSet<>())
+                        .add(pp.getPattern().getSlug());
+            }
+
             List<ProblemSeedDto> problemSeeds = loadJson("seed/problems.json", new TypeReference<List<ProblemSeedDto>>() {});
-            Map<String, Problem> sourceIndex = new HashMap<>(); // "PLATFORM:externalId" -> Problem
+
+            // First pass: save any missing problems in batch
+            List<Problem> newProblems = new ArrayList<>();
+            for (ProblemSeedDto seed : problemSeeds) {
+                if (!problemMap.containsKey(seed.canonicalTitle())) {
+                    Problem p = Problem.builder()
+                            .canonicalTitle(seed.canonicalTitle())
+                            .difficulty(seed.difficulty())
+                            .estimatedMinutes(seed.estimatedMinutes() != null ? seed.estimatedMinutes() : 30)
+                            .descriptionHint(seed.descriptionHint())
+                            .referenceApproach(seed.referenceApproach())
+                            .optimalComplexity(seed.optimalComplexity())
+                            .build();
+                    newProblems.add(p);
+                }
+            }
+            if (!newProblems.isEmpty()) {
+                List<Problem> saved = problemRepo.saveAll(newProblems);
+                for (Problem p : saved) {
+                    problemMap.put(p.getCanonicalTitle(), p);
+                }
+                log.info("Batch saved {} new canonical problems", saved.size());
+            }
+
+            // Second pass: save any missing sources and pattern associations in batch
+            List<ProblemSource> newSources = new ArrayList<>();
+            List<ProblemPattern> newProblemPatterns = new ArrayList<>();
 
             for (ProblemSeedDto seed : problemSeeds) {
-                Problem problem = Problem.builder()
-                        .canonicalTitle(seed.canonicalTitle())
-                        .difficulty(seed.difficulty())
-                        .estimatedMinutes(seed.estimatedMinutes() != null ? seed.estimatedMinutes() : 30)
-                        .descriptionHint(seed.descriptionHint())
-                        .referenceApproach(seed.referenceApproach())
-                        .optimalComplexity(seed.optimalComplexity())
-                        .build();
-
-                Problem savedProblem = problemRepo.save(problem);
+                Problem problem = problemMap.get(seed.canonicalTitle());
+                if (problem == null) continue;
 
                 if (seed.sources() != null) {
                     for (SourceSeedDto src : seed.sources()) {
-                        ProblemSource problemSource = ProblemSource.builder()
-                                .problem(savedProblem)
-                                .platform(src.platform())
-                                .externalId(src.externalId())
-                                .externalUrl(src.url())
-                                .externalTitle(src.title())
-                                .build();
-                        sourceRepo.save(problemSource);
-                        sourceIndex.put(src.platform().name() + ":" + src.externalId(), savedProblem);
+                        String key = src.platform().name() + ":" + src.externalId();
+                        if (!sourceIndex.containsKey(key)) {
+                            ProblemSource ps = ProblemSource.builder()
+                                    .problem(problem)
+                                    .platform(src.platform())
+                                    .externalId(src.externalId())
+                                    .externalUrl(src.url())
+                                    .externalTitle(src.title())
+                                    .build();
+                            newSources.add(ps);
+                            sourceIndex.put(key, problem);
+                        }
                     }
                 }
 
                 if (seed.patterns() != null) {
+                    Set<String> attached = existingPatternsByProblemId.computeIfAbsent(problem.getId(), k -> new HashSet<>());
                     for (PatternTagSeedDto tag : seed.patterns()) {
-                        Pattern pattern = patternRepo.findBySlug(tag.slug())
-                                .orElseThrow(() -> new IllegalStateException("Unknown pattern slug: " + tag.slug()));
-                        ProblemPattern problemPattern = ProblemPattern.builder()
-                                .problem(savedProblem)
-                                .pattern(pattern)
-                                .weight(tag.weight() != null ? tag.weight() : 1.0)
-                                .build();
-                        problemPatternRepo.save(problemPattern);
+                        if (!attached.contains(tag.slug())) {
+                            Pattern pat = patternMap.get(tag.slug());
+                            if (pat != null) {
+                                ProblemPattern pp = ProblemPattern.builder()
+                                        .problem(problem)
+                                        .pattern(pat)
+                                        .weight(tag.weight() != null ? tag.weight() : 1.0)
+                                        .build();
+                                newProblemPatterns.add(pp);
+                                attached.add(tag.slug());
+                            }
+                        }
                     }
                 }
             }
-            log.info("Loaded {} canonical problems with sources and pattern tags", problemSeeds.size());
 
-            // 3. Load sheets
-            loadSheet("Blind 75", "Curated list of 75 essential LeetCode questions", "https://leetcode.com/discuss/general-discussion/460599/blind-75-leetcode-questions", "seed/blind75.json", sourceIndex);
-            loadSheet("NeetCode 150", "The premier structured 150 DSA practice list", "https://neetcode.io/practice", "seed/neetcode150.json", sourceIndex);
-            loadSheet("Striver A-Z", "Comprehensive DSA Course covering basics to advanced topics", "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2", "seed/striver_a2z.json", sourceIndex);
-
-            // 4. Load relations
-            List<RelationSeedDto> relationSeeds = loadJson("seed/relations.json", new TypeReference<List<RelationSeedDto>>() {});
-            int relationCount = 0;
-            for (RelationSeedDto rel : relationSeeds) {
-                Problem source = sourceIndex.get(rel.sourcePlatform().name() + ":" + rel.sourceExternalId());
-                Problem target = sourceIndex.get(rel.targetPlatform().name() + ":" + rel.targetExternalId());
-                if (source != null && target != null) {
-                    ProblemRelation relation = ProblemRelation.builder()
-                            .sourceProblem(source)
-                            .targetProblem(target)
-                            .relationType(rel.relationType())
-                            .reviewed(true)
-                            .notes(rel.notes())
-                            .build();
-                    relationRepo.save(relation);
-                    relationCount++;
-                } else {
-                    log.warn("Could not find problems for relation: {} -> {}", rel.sourceExternalId(), rel.targetExternalId());
-                }
+            if (!newSources.isEmpty()) {
+                sourceRepo.saveAll(newSources);
+                log.info("Batch saved {} new problem sources", newSources.size());
             }
-            log.info("Loaded {} problem relations", relationCount);
+            if (!newProblemPatterns.isEmpty()) {
+                problemPatternRepo.saveAll(newProblemPatterns);
+                log.info("Batch saved {} new problem-pattern associations", newProblemPatterns.size());
+            }
 
-            // 5. Compute and log dynamic overlap
+            // 3. Batch sync sheets
+            syncSheet("Blind 75", "Curated list of 75 essential LeetCode questions", "https://leetcode.com/discuss/general-discussion/460599/blind-75-leetcode-questions", "seed/blind75.json", sourceIndex);
+            syncSheet("NeetCode 150", "The premier structured 150 DSA practice list", "https://neetcode.io/practice", "seed/neetcode150.json", sourceIndex);
+            syncSheet("Striver A-Z", "Comprehensive DSA Course covering basics to advanced topics", "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2", "seed/striver_a2z.json", sourceIndex);
+
+            // 4. Batch load missing relations
+            loadMissingRelations(sourceIndex);
+
+            // 5. Dynamic overlap logging
             Set<Long> b75 = sheetProblemRepo.findProblemIdsBySheetName("Blind 75");
             Set<Long> nc150 = sheetProblemRepo.findProblemIdsBySheetName("NeetCode 150");
             Set<Long> striver = sheetProblemRepo.findProblemIdsBySheetName("Striver A-Z");
@@ -140,7 +181,7 @@ public class SeedDataLoader implements CommandLineRunner {
             allUnion.addAll(striver);
 
             log.info("==================================================");
-            log.info("=== PREPTRACK SEED DATA LOADED SUCCESSFULLY ===");
+            log.info("=== PREPTRACK SEED DATA SYNCED SUCCESSFULLY ===");
             log.info("Total Patterns: {}", patternRepo.count());
             log.info("Total Problems: {}", problemRepo.count());
             log.info("Total Problem Sources: {}", sourceRepo.count());
@@ -153,64 +194,80 @@ public class SeedDataLoader implements CommandLineRunner {
             log.info("==================================================");
 
         } catch (Exception e) {
-            log.error("Failed to load seed data", e);
-            throw new RuntimeException("Seed data load failure", e);
+            log.error("Failed to sync seed data", e);
+            throw new RuntimeException("Seed data sync failure", e);
         }
     }
 
-    private void loadSheet(String name, String description, String url, String seedFile, Map<String, Problem> sourceIndex) throws Exception {
-        Sheet sheet = sheetRepo.save(Sheet.builder()
-                .name(name)
-                .description(description)
-                .sourceUrl(url)
-                .isActive(true)
-                .build());
+    private void syncSheet(String name, String description, String url, String seedFile, Map<String, Problem> sourceIndex) throws Exception {
+        Sheet sheet = sheetRepo.findByName(name).orElseGet(() ->
+                sheetRepo.save(Sheet.builder()
+                        .name(name)
+                        .description(description)
+                        .sourceUrl(url)
+                        .isActive(true)
+                        .build())
+        );
 
+        Set<Long> existingProblemIds = sheetProblemRepo.findProblemIdsBySheetName(name);
         List<SheetItemSeedDto> items = loadJson(seedFile, new TypeReference<List<SheetItemSeedDto>>() {});
-        List<SheetProblem> sheetProblems = new ArrayList<>();
+        List<SheetProblem> toAdd = new ArrayList<>();
 
         for (SheetItemSeedDto item : items) {
             Problem problem = sourceIndex.get(item.sourcePlatform().name() + ":" + item.sourceExternalId());
             if (problem != null) {
-                sheetProblems.add(SheetProblem.builder()
-                        .sheet(sheet)
-                        .problem(problem)
-                        .category(item.category())
-                        .displayOrder(item.displayOrder())
-                        .build());
+                if (!existingProblemIds.contains(problem.getId())) {
+                    toAdd.add(SheetProblem.builder()
+                            .sheet(sheet)
+                            .problem(problem)
+                            .category(item.category())
+                            .displayOrder(item.displayOrder())
+                            .build());
+                    existingProblemIds.add(problem.getId());
+                }
             } else {
                 log.warn("Sheet '{}' referenced missing problem: {}:{}", name, item.sourcePlatform(), item.sourceExternalId());
             }
         }
 
-        sheetProblemRepo.saveAll(sheetProblems);
-        log.info("Loaded sheet '{}' with {} problems", name, sheetProblems.size());
+        if (!toAdd.isEmpty()) {
+            sheetProblemRepo.saveAll(toAdd);
+        }
+
+        log.info("Sheet '{}' synced ({} newly added, total: {})", name, toAdd.size(), sheetProblemRepo.countBySheetId(sheet.getId()));
     }
 
-    private void loadMissingRelations() {
+    private void loadMissingRelations(Map<String, Problem> sourceIndex) {
         try {
+            List<ProblemRelation> existingRelations = relationRepo.findAll();
+            Set<String> existingPairs = new HashSet<>();
+            for (ProblemRelation pr : existingRelations) {
+                existingPairs.add(pr.getSourceProblem().getId() + "->" + pr.getTargetProblem().getId());
+            }
+
             List<RelationSeedDto> relationSeeds = loadJson("seed/relations.json", new TypeReference<List<RelationSeedDto>>() {});
-            int addedCount = 0;
+            List<ProblemRelation> newRelations = new ArrayList<>();
+
             for (RelationSeedDto rel : relationSeeds) {
-                Optional<ProblemSource> srcOpt = sourceRepo.findByPlatformAndExternalId(rel.sourcePlatform(), rel.sourceExternalId());
-                Optional<ProblemSource> tgtOpt = sourceRepo.findByPlatformAndExternalId(rel.targetPlatform(), rel.targetExternalId());
-                if (srcOpt.isPresent() && tgtOpt.isPresent()) {
-                    Problem src = srcOpt.get().getProblem();
-                    Problem tgt = tgtOpt.get().getProblem();
-                    if (!relationRepo.existsBySourceProblemIdAndTargetProblemId(src.getId(), tgt.getId())) {
-                        relationRepo.save(ProblemRelation.builder()
+                Problem src = sourceIndex.get(rel.sourcePlatform().name() + ":" + rel.sourceExternalId());
+                Problem tgt = sourceIndex.get(rel.targetPlatform().name() + ":" + rel.targetExternalId());
+                if (src != null && tgt != null) {
+                    String pairKey = src.getId() + "->" + tgt.getId();
+                    if (!existingPairs.contains(pairKey)) {
+                        newRelations.add(ProblemRelation.builder()
                                 .sourceProblem(src)
                                 .targetProblem(tgt)
                                 .relationType(rel.relationType())
                                 .reviewed(true)
                                 .notes(rel.notes())
                                 .build());
-                        addedCount++;
+                        existingPairs.add(pairKey);
                     }
                 }
             }
-            if (addedCount > 0) {
-                log.info("Synced {} new relations. Total relations in DB: {}", addedCount, relationRepo.count());
+            if (!newRelations.isEmpty()) {
+                relationRepo.saveAll(newRelations);
+                log.info("Synced {} new relations. Total relations in DB: {}", newRelations.size(), relationRepo.count());
             } else {
                 log.info("Relations up to date (Total: {})", relationRepo.count());
             }

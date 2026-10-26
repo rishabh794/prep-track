@@ -1,31 +1,452 @@
 [
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "217", "category": "Arrays & Hashing", "displayOrder": 1 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "242", "category": "Arrays & Hashing", "displayOrder": 2 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "1", "category": "Arrays & Hashing", "displayOrder": 3 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "49", "category": "Arrays & Hashing", "displayOrder": 4 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "347", "category": "Arrays & Hashing", "displayOrder": 5 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "238", "category": "Arrays & Hashing", "displayOrder": 6 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "128", "category": "Arrays & Hashing", "displayOrder": 7 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "125", "category": "Two Pointers", "displayOrder": 8 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "15", "category": "Two Pointers", "displayOrder": 9 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "11", "category": "Two Pointers", "displayOrder": 10 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "121", "category": "Sliding Window", "displayOrder": 11 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "3", "category": "Sliding Window", "displayOrder": 12 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "424", "category": "Sliding Window", "displayOrder": 13 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "76", "category": "Sliding Window", "displayOrder": 14 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "20", "category": "Stack", "displayOrder": 15 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "153", "category": "Binary Search", "displayOrder": 16 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "33", "category": "Binary Search", "displayOrder": 17 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "206", "category": "Linked List", "displayOrder": 18 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "21", "category": "Linked List", "displayOrder": 19 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "141", "category": "Linked List", "displayOrder": 20 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "200", "category": "Graphs", "displayOrder": 21 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "207", "category": "Graphs", "displayOrder": 22 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "70", "category": "1D DP", "displayOrder": 23 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "198", "category": "1D DP", "displayOrder": 24 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "322", "category": "1D DP", "displayOrder": 25 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "300", "category": "1D DP", "displayOrder": 26 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "1143", "category": "2D DP", "displayOrder": 27 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "53", "category": "1D DP", "displayOrder": 28 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "56", "category": "Intervals", "displayOrder": 29 }
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "217",
+    "category": "Arrays & Hashing",
+    "displayOrder": 1
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "242",
+    "category": "Arrays & Hashing",
+    "displayOrder": 2
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "1",
+    "category": "Arrays & Hashing",
+    "displayOrder": 3
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "49",
+    "category": "Arrays & Hashing",
+    "displayOrder": 4
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "347",
+    "category": "Arrays & Hashing",
+    "displayOrder": 5
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "238",
+    "category": "Arrays & Hashing",
+    "displayOrder": 6
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "271",
+    "category": "Arrays & Hashing",
+    "displayOrder": 7
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "128",
+    "category": "Arrays & Hashing",
+    "displayOrder": 8
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "125",
+    "category": "Two Pointers",
+    "displayOrder": 9
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "15",
+    "category": "Two Pointers",
+    "displayOrder": 10
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "11",
+    "category": "Two Pointers",
+    "displayOrder": 11
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "121",
+    "category": "Sliding Window",
+    "displayOrder": 12
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "3",
+    "category": "Sliding Window",
+    "displayOrder": 13
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "424",
+    "category": "Sliding Window",
+    "displayOrder": 14
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "76",
+    "category": "Sliding Window",
+    "displayOrder": 15
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "20",
+    "category": "Stack",
+    "displayOrder": 16
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "153",
+    "category": "Binary Search",
+    "displayOrder": 17
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "33",
+    "category": "Binary Search",
+    "displayOrder": 18
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "206",
+    "category": "Linked List",
+    "displayOrder": 19
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "21",
+    "category": "Linked List",
+    "displayOrder": 20
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "143",
+    "category": "Linked List",
+    "displayOrder": 21
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "19",
+    "category": "Linked List",
+    "displayOrder": 22
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "141",
+    "category": "Linked List",
+    "displayOrder": 23
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "23",
+    "category": "Linked List",
+    "displayOrder": 24
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "226",
+    "category": "Trees",
+    "displayOrder": 25
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "104",
+    "category": "Trees",
+    "displayOrder": 26
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "100",
+    "category": "Trees",
+    "displayOrder": 27
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "572",
+    "category": "Trees",
+    "displayOrder": 28
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "235",
+    "category": "Trees",
+    "displayOrder": 29
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "102",
+    "category": "Trees",
+    "displayOrder": 30
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "98",
+    "category": "Trees",
+    "displayOrder": 31
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "230",
+    "category": "Trees",
+    "displayOrder": 32
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "105",
+    "category": "Trees",
+    "displayOrder": 33
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "124",
+    "category": "Trees",
+    "displayOrder": 34
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "297",
+    "category": "Trees",
+    "displayOrder": 35
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "208",
+    "category": "Tries",
+    "displayOrder": 36
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "211",
+    "category": "Tries",
+    "displayOrder": 37
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "212",
+    "category": "Tries",
+    "displayOrder": 38
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "295",
+    "category": "Heap / Priority Queue",
+    "displayOrder": 39
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "39",
+    "category": "Backtracking",
+    "displayOrder": 40
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "79",
+    "category": "Backtracking",
+    "displayOrder": 41
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "200",
+    "category": "Graphs",
+    "displayOrder": 42
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "133",
+    "category": "Graphs",
+    "displayOrder": 43
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "417",
+    "category": "Graphs",
+    "displayOrder": 44
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "207",
+    "category": "Graphs",
+    "displayOrder": 45
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "210",
+    "category": "Graphs",
+    "displayOrder": 46
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "261",
+    "category": "Graphs",
+    "displayOrder": 47
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "323",
+    "category": "Graphs",
+    "displayOrder": 48
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "269",
+    "category": "Graphs",
+    "displayOrder": 49
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "70",
+    "category": "1D DP",
+    "displayOrder": 50
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "198",
+    "category": "1D DP",
+    "displayOrder": 51
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "213",
+    "category": "1D DP",
+    "displayOrder": 52
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "91",
+    "category": "1D DP",
+    "displayOrder": 53
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "322",
+    "category": "1D DP",
+    "displayOrder": 54
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "300",
+    "category": "1D DP",
+    "displayOrder": 55
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "139",
+    "category": "1D DP",
+    "displayOrder": 56
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "377",
+    "category": "1D DP",
+    "displayOrder": 57
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "53",
+    "category": "1D DP",
+    "displayOrder": 58
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "152",
+    "category": "1D DP",
+    "displayOrder": 59
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "55",
+    "category": "1D DP",
+    "displayOrder": 60
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "62",
+    "category": "2D DP",
+    "displayOrder": 61
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "1143",
+    "category": "2D DP",
+    "displayOrder": 62
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "57",
+    "category": "Intervals",
+    "displayOrder": 63
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "56",
+    "category": "Intervals",
+    "displayOrder": 64
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "435",
+    "category": "Intervals",
+    "displayOrder": 65
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "252",
+    "category": "Intervals",
+    "displayOrder": 66
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "253",
+    "category": "Intervals",
+    "displayOrder": 67
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "73",
+    "category": "Matrix",
+    "displayOrder": 68
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "54",
+    "category": "Matrix",
+    "displayOrder": 69
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "48",
+    "category": "Matrix",
+    "displayOrder": 70
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "191",
+    "category": "Bit Manipulation",
+    "displayOrder": 71
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "338",
+    "category": "Bit Manipulation",
+    "displayOrder": 72
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "190",
+    "category": "Bit Manipulation",
+    "displayOrder": 73
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "268",
+    "category": "Bit Manipulation",
+    "displayOrder": 74
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "371",
+    "category": "Bit Manipulation",
+    "displayOrder": 75
+  }
 ]

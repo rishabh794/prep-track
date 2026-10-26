@@ -12,4 +12,7 @@ import java.util.Optional;
 public interface ProblemSourceRepository extends JpaRepository<ProblemSource, Long> {
     Optional<ProblemSource> findByPlatformAndExternalId(Platform platform, String externalId);
     List<ProblemSource> findByProblemId(Long problemId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT ps FROM ProblemSource ps JOIN FETCH ps.problem")
+    List<ProblemSource> findAllWithProblem();
 }

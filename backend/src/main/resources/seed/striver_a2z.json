@@ -1,31 +1,350 @@
 [
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "704", "category": "Step 4.1: BS on 1D Arrays", "displayOrder": 1 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "33", "category": "Step 4.1: BS on 1D Arrays", "displayOrder": 2 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "153", "category": "Step 4.1: BS on 1D Arrays", "displayOrder": 3 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "875", "category": "Step 4.2: BS on Answers", "displayOrder": 4 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "1", "category": "Step 3.2: Medium Arrays", "displayOrder": 5 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "53", "category": "Step 3.2: Medium Arrays", "displayOrder": 6 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "121", "category": "Step 3.2: Medium Arrays", "displayOrder": 7 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "128", "category": "Step 3.2: Medium Arrays", "displayOrder": 8 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "15", "category": "Step 3.3: Hard Arrays", "displayOrder": 9 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "56", "category": "Step 3.3: Hard Arrays", "displayOrder": 10 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "42", "category": "Step 3.3: Hard Arrays", "displayOrder": 11 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "206", "category": "Step 6.1: Learn 1D LinkedList", "displayOrder": 12 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "141", "category": "Step 6.3: Medium Problems of LL", "displayOrder": 13 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "21", "category": "Step 6.3: Medium Problems of LL", "displayOrder": 14 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "20", "category": "Step 9.1: Learning Stack and Queue", "displayOrder": 15 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "496", "category": "Step 9.3: Monotonic Stack Problems", "displayOrder": 16 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "739", "category": "Step 9.3: Monotonic Stack Problems", "displayOrder": 17 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "84", "category": "Step 9.3: Monotonic Stack Problems", "displayOrder": 18 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "239", "category": "Step 9.3: Monotonic Stack Problems", "displayOrder": 19 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "3", "category": "Step 10: Sliding Window & Two Pointer", "displayOrder": 20 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "424", "category": "Step 10: Sliding Window & Two Pointer", "displayOrder": 21 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "76", "category": "Step 10: Sliding Window & Two Pointer", "displayOrder": 22 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "200", "category": "Step 15.2: Problems on BFS/DFS", "displayOrder": 23 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "207", "category": "Step 15.3: Topo Sort and Problems", "displayOrder": 24 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "70", "category": "Step 16.1: Introduction to DP", "displayOrder": 25 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "198", "category": "Step 16.2: 1D DP", "displayOrder": 26 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "322", "category": "Step 16.4: DP on Subsequences", "displayOrder": 27 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "1143", "category": "Step 16.5: DP on Strings", "displayOrder": 28 },
-  { "sourcePlatform": "LEETCODE", "sourceExternalId": "300", "category": "Step 16.7: DP on LIS", "displayOrder": 29 }
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "704",
+    "category": "Step 4.1: BS on 1D Arrays",
+    "displayOrder": 1
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "33",
+    "category": "Step 4.1: BS on 1D Arrays",
+    "displayOrder": 2
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "153",
+    "category": "Step 4.1: BS on 1D Arrays",
+    "displayOrder": 3
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "875",
+    "category": "Step 4.2: BS on Answers",
+    "displayOrder": 4
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "74",
+    "category": "Step 4.3: BS on 2D Arrays",
+    "displayOrder": 5
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "4",
+    "category": "Step 4.3: BS on 2D Arrays",
+    "displayOrder": 6
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "1",
+    "category": "Step 3.2: Medium Arrays",
+    "displayOrder": 7
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "75",
+    "category": "Step 3.2: Medium Arrays",
+    "displayOrder": 8
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "169",
+    "category": "Step 3.2: Medium Arrays",
+    "displayOrder": 9
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "53",
+    "category": "Step 3.2: Medium Arrays",
+    "displayOrder": 10
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "121",
+    "category": "Step 3.2: Medium Arrays",
+    "displayOrder": 11
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "128",
+    "category": "Step 3.2: Medium Arrays",
+    "displayOrder": 12
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "118",
+    "category": "Step 3.2: Medium Arrays",
+    "displayOrder": 13
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "31",
+    "category": "Step 3.2: Medium Arrays",
+    "displayOrder": 14
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "15",
+    "category": "Step 3.3: Hard Arrays",
+    "displayOrder": 15
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "56",
+    "category": "Step 3.3: Hard Arrays",
+    "displayOrder": 16
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "42",
+    "category": "Step 3.3: Hard Arrays",
+    "displayOrder": 17
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "152",
+    "category": "Step 3.3: Hard Arrays",
+    "displayOrder": 18
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "206",
+    "category": "Step 6.1: Learn 1D LinkedList",
+    "displayOrder": 19
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "141",
+    "category": "Step 6.3: Medium Problems of LL",
+    "displayOrder": 20
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "21",
+    "category": "Step 6.3: Medium Problems of LL",
+    "displayOrder": 21
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "19",
+    "category": "Step 6.3: Medium Problems of LL",
+    "displayOrder": 22
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "2",
+    "category": "Step 6.3: Medium Problems of LL",
+    "displayOrder": 23
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "23",
+    "category": "Step 6.5: Hard Problems of LL",
+    "displayOrder": 24
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "146",
+    "category": "Step 6.5: Hard Problems of LL",
+    "displayOrder": 25
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "20",
+    "category": "Step 9.1: Learning Stack and Queue",
+    "displayOrder": 26
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "155",
+    "category": "Step 9.1: Learning Stack and Queue",
+    "displayOrder": 27
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "496",
+    "category": "Step 9.3: Monotonic Stack Problems",
+    "displayOrder": 28
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "739",
+    "category": "Step 9.3: Monotonic Stack Problems",
+    "displayOrder": 29
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "84",
+    "category": "Step 9.3: Monotonic Stack Problems",
+    "displayOrder": 30
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "239",
+    "category": "Step 9.3: Monotonic Stack Problems",
+    "displayOrder": 31
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "3",
+    "category": "Step 10: Sliding Window & Two Pointer",
+    "displayOrder": 32
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "424",
+    "category": "Step 10: Sliding Window & Two Pointer",
+    "displayOrder": 33
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "76",
+    "category": "Step 10: Sliding Window & Two Pointer",
+    "displayOrder": 34
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "104",
+    "category": "Step 13.1: Traversals on Binary Trees",
+    "displayOrder": 35
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "110",
+    "category": "Step 13.2: Medium Problems of BT",
+    "displayOrder": 36
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "543",
+    "category": "Step 13.2: Medium Problems of BT",
+    "displayOrder": 37
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "124",
+    "category": "Step 13.2: Medium Problems of BT",
+    "displayOrder": 38
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "100",
+    "category": "Step 13.2: Medium Problems of BT",
+    "displayOrder": 39
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "102",
+    "category": "Step 13.2: Medium Problems of BT",
+    "displayOrder": 40
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "199",
+    "category": "Step 13.2: Medium Problems of BT",
+    "displayOrder": 41
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "236",
+    "category": "Step 13.2: Medium Problems of BT",
+    "displayOrder": 42
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "98",
+    "category": "Step 14.2: Practice Problems on BST",
+    "displayOrder": 43
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "235",
+    "category": "Step 14.2: Practice Problems on BST",
+    "displayOrder": 44
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "230",
+    "category": "Step 14.2: Practice Problems on BST",
+    "displayOrder": 45
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "200",
+    "category": "Step 15.2: Problems on BFS/DFS",
+    "displayOrder": 46
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "994",
+    "category": "Step 15.2: Problems on BFS/DFS",
+    "displayOrder": 47
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "207",
+    "category": "Step 15.3: Topo Sort and Problems",
+    "displayOrder": 48
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "210",
+    "category": "Step 15.3: Topo Sort and Problems",
+    "displayOrder": 49
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "70",
+    "category": "Step 16.1: Introduction to DP",
+    "displayOrder": 50
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "746",
+    "category": "Step 16.1: Introduction to DP",
+    "displayOrder": 51
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "198",
+    "category": "Step 16.2: 1D DP",
+    "displayOrder": 52
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "213",
+    "category": "Step 16.2: 1D DP",
+    "displayOrder": 53
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "62",
+    "category": "Step 16.3: 2D/3D DP and DP on Grids",
+    "displayOrder": 54
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "322",
+    "category": "Step 16.4: DP on Subsequences",
+    "displayOrder": 55
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "1143",
+    "category": "Step 16.5: DP on Strings",
+    "displayOrder": 56
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "300",
+    "category": "Step 16.7: DP on LIS",
+    "displayOrder": 57
+  },
+  {
+    "sourcePlatform": "LEETCODE",
+    "sourceExternalId": "139",
+    "category": "Step 16.8: Mcm DP / Partition DP",
+    "displayOrder": 58
+  }
 ]

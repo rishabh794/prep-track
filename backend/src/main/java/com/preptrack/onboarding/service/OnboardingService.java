@@ -59,6 +59,14 @@ public class OnboardingService {
         Set<Long> uniqueProblemIds = new HashSet<>();
         List<String> sheetNames = sheets.stream().map(Sheet::getName).collect(Collectors.toList());
 
+        List<UserSheet> currentSheets = userSheetRepository.findByUserIdWithSheet(user.getId());
+        Set<Long> requestedIds = new HashSet<>(request.getSheetIds());
+        for (UserSheet us : currentSheets) {
+            if (!requestedIds.contains(us.getSheet().getId())) {
+                userSheetRepository.delete(us);
+            }
+        }
+
         for (Sheet sheet : sheets) {
             if (!userSheetRepository.existsByUserIdAndSheetId(user.getId(), sheet.getId())) {
                 UserSheet userSheet = UserSheet.builder()

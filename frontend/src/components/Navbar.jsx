@@ -111,20 +111,39 @@ export default function Navbar() {
           >
             Interviews
           </Link>
-          <Link
-            to="/onboarding"
-            style={{
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              color: isActive('/onboarding') ? '#ffffff' : 'var(--text-muted)',
-              background: isActive('/onboarding') ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Onboarding Setup
-          </Link>
+          {user && (
+            user.settings?.onboardingComplete ? (
+              <Link
+                to="/settings"
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  color: isActive('/settings') ? '#ffffff' : 'var(--text-muted)',
+                  background: isActive('/settings') ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Settings
+              </Link>
+            ) : (
+              <Link
+                to="/onboarding"
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  color: isActive('/onboarding') ? '#ffffff' : 'var(--text-muted)',
+                  background: isActive('/onboarding') ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Onboarding Setup
+              </Link>
+            )
+          )}
         </nav>
 
         {/* User Account Section */}

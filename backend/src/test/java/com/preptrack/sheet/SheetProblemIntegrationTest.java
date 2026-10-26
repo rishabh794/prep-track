@@ -63,8 +63,8 @@ class SheetProblemIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(3))))
                 .andExpect(jsonPath("$[*].name", hasItems("Blind 75", "NeetCode 150", "Striver A-Z")))
-                .andExpect(jsonPath("$[?(@.name == 'Blind 75')].totalProblems").value(hasItem(29)))
-                .andExpect(jsonPath("$[?(@.name == 'NeetCode 150')].totalProblems").value(hasItem(36)));
+                .andExpect(jsonPath("$[?(@.name == 'Blind 75')].totalProblems").value(hasItem(75)))
+                .andExpect(jsonPath("$[?(@.name == 'NeetCode 150')].totalProblems").value(hasItem(greaterThanOrEqualTo(100))));
     }
 
     @Test
