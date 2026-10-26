@@ -170,14 +170,50 @@ export interface AttemptResponse {
   planItemCompleted?: boolean;
 }
 
+export type RecallGrade = 'PASS' | 'PARTIAL' | 'FAIL';
+
+export interface RecallCheckResponse {
+  recallCheckId: number;
+  aiAssessment: RecallGrade;
+  aiReasoning: string;
+  canOverride: boolean;
+}
+
+export interface ExtractedPattern {
+  patternId: number;
+  patternSlug: string;
+  patternName: string;
+  wasWeak: boolean;
+  confidence: number;
+}
+
+export interface FeedbackExtractionResult {
+  extractedPatterns: ExtractedPattern[];
+  suggestedOutcome: 'PASSED' | 'FAILED' | 'PARTIAL';
+  requiresConfirmation: boolean;
+}
+
+export interface InterviewTopic {
+  id: number;
+  patternId: number;
+  patternName: string;
+  patternSlug: string;
+  wasWeak: boolean;
+  confirmed: boolean;
+}
+
 export interface Interview {
   id: number;
+  applicationId?: number;
   companyName: string;
   role?: string;
   interviewDate: string;
   outcome?: string;
   roundName?: string;
   notes?: string;
+  rawFeedback?: string;
+  aiExtracted?: boolean;
+  topics?: InterviewTopic[];
 }
 
 

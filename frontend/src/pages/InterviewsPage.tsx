@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import { Interview } from '../types';
+import InterviewDebriefModal from '../components/InterviewDebriefModal';
 
 export default function InterviewsPage() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [debriefInterview, setDebriefInterview] = useState<Interview | null>(null);
 
   // New Interview Form
   const [companyName, setCompanyName] = useState<string>('');
@@ -17,9 +19,15 @@ export default function InterviewsPage() {
 
   const fetchInterviews = () => {
     setLoading(true);
-    api.get<Interview[]>('/interviews/upcoming')
+    api.get<Interview[]>('/interviews')
       .then((res) => setInterviews(res.data))
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        console.error(err);
+        // Fallback to upcoming if /interviews fails
+        api.get<Interview[]>('/interviews/upcoming')
+          .then((res) => setInterviews(res.data))
+          .catch((e) => console.error(e));
+      })
       .finally(() => setLoading(false));
   };
 
@@ -133,13 +141,49 @@ export default function InterviewsPage() {
                   </div>
                 )}
 
-                <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
+                {item.topics && item.topics.length > 0 && (
+                  <div style={{ marginTop: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {item.topics.map((t, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          fontSize: '0.72rem',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: t.wasWeak ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                          color: t.wasWeak ? '#fca5a5' : '#86efac',
+                          border: t.wasWeak ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {t.wasWeak ? '⚠️ ' : '✅ '}{t.patternName}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                  <button
+                    onClick={() => setDebriefInterview(item)}
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      background: 'rgba(99, 102, 241, 0.12)',
+                      color: '#a5b4fc',
+                      borderColor: 'rgba(99, 102, 241, 0.3)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <span>🎙️</span> AI Debrief {item.aiExtracted ? '✓' : ''}
+                  </button>
+
                   <Link
                     to={`/forecast/${item.id}`}
                     className="btn btn-primary btn-sm"
                     style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
-                    <span>📊</span> View Readiness Forecast ➔
+                    <span>📊</span> Forecast ➔
                   </Link>
                 </div>
               </div>
@@ -233,6 +277,17 @@ export default function InterviewsPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {debriefInterview && (
+        <InterviewDebriefModal
+          interview={debriefInterview}
+          onClose={() => setDebriefInterview(null)}
+          onSuccess={() => {
+            setDebriefInterview(null);
+            fetchInterviews();
+          }}
+        />
       )}
     </div>
   );

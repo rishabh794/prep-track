@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import RecallModal from '../components/RecallModal';
 import {
   DailyPlan,
   PlanItem,
@@ -13,6 +14,7 @@ export default function TodayPage() {
   const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [recallItem, setRecallItem] = useState<PlanItem | null>(null);
 
   // Active problem modal & attempt submission state
   const [activeItem, setActiveItem] = useState<PlanItem | null>(null);
@@ -452,6 +454,20 @@ export default function TodayPage() {
                       {!item.completed && !item.skipped ? (
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           <button
+                            onClick={() => setRecallItem(item)}
+                            className="btn btn-sm"
+                            style={{
+                              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.25))',
+                              color: '#c7d2fe',
+                              border: '1px solid rgba(168, 85, 247, 0.45)',
+                              fontWeight: 700
+                            }}
+                            title="Active recall check graded by AI (~5 min)"
+                          >
+                            🧠 AI Recall
+                          </button>
+
+                          <button
                             onClick={() => handleSelectOutcome(item, 'SOLVED_INDEPENDENTLY')}
                             className="btn btn-sm"
                             style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }}
@@ -820,6 +836,21 @@ export default function TodayPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Phase 5 AI Recall Modal */}
+      {recallItem && (
+        <RecallModal
+          problemId={recallItem.problemId}
+          problemTitle={recallItem.title}
+          difficulty={recallItem.difficulty}
+          patterns={recallItem.patterns}
+          onClose={() => setRecallItem(null)}
+          onSuccess={() => {
+            setRecallItem(null);
+            fetchPlan();
+          }}
+        />
       )}
     </div>
   );
