@@ -86,8 +86,10 @@ public class AcquisitionScorer {
                     : interviewRelevanceCalculator.calculate(userId, pattern, planDate);
 
             double relevance = interviewCtx.getRelevanceMultiplier();
+            double effectiveBoost = interviewRelevanceCalculator.getEffectiveInterviewBoost(state, planDate);
+            double totalRelevance = relevance + effectiveBoost;
 
-            double contrib = weight * skillGap * relevance;
+            double contrib = weight * skillGap * totalRelevance;
             sumValue += contrib;
 
 

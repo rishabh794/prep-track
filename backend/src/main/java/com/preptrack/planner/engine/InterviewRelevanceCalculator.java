@@ -71,4 +71,17 @@ public class InterviewRelevanceCalculator {
                 .companyName(company)
                 .build();
     }
+
+    public double getEffectiveInterviewBoost(com.preptrack.pattern.entity.UserPatternState state, LocalDate currentDate) {
+        if (state == null || state.getInterviewBoost() == null || state.getInterviewBoost() <= 0.0 || state.getInterviewBoostSetAt() == null) {
+            return 0.0;
+        }
+        LocalDate setDate = state.getInterviewBoostSetAt().toLocalDate();
+        long daysSince = ChronoUnit.DAYS.between(setDate, currentDate);
+        if (daysSince >= 14 || daysSince < 0) {
+            return 0.0;
+        }
+        double decayFactor = (14.0 - (double) daysSince) / 14.0;
+        return Math.round(state.getInterviewBoost() * decayFactor * 100.0) / 100.0;
+    }
 }

@@ -92,10 +92,11 @@ public class MaintenanceScorer {
                     : interviewRelevanceCalculator.calculate(userId, pattern, planDate);
 
             double relevance = interviewCtx.getRelevanceMultiplier();
-
+            double effectiveBoost = interviewRelevanceCalculator.getEffectiveInterviewBoost(state, planDate);
+            double totalRelevance = relevance + effectiveBoost;
 
             // Maintenance floor: max(0.15, target - skill)
-            double maintenanceNeed = Math.max(MAINTENANCE_FLOOR, targetLevel - skill) * relevance;
+            double maintenanceNeed = Math.max(MAINTENANCE_FLOOR, targetLevel - skill) * totalRelevance;
             double forgettingFactor = Math.max(0.0, 1.0 - retention);
 
             double contrib = weight * maintenanceNeed * forgettingFactor;
