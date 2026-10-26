@@ -4,6 +4,7 @@ import com.preptrack.planner.entity.PlanItemType;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -18,6 +19,9 @@ public class KnapsackSolver {
      * 1. Time budget (T minutes)
      * 2. Max review slots (R items - shared by RETRY and REVISION)
      * 3. Max new problem slots (K items - NEW_PROBLEM)
+     *
+     * Uses a rolling 3D DP value table and a compact BitSet for backtracking to prevent
+     * JVM OutOfMemoryError.
      */
     public List<PlanCandidate> solve(
             List<PlanCandidate> candidates,
@@ -38,33 +42,45 @@ public class KnapsackSolver {
             filteredCandidates = filteredCandidates.subList(0, MAX_CANDIDATES);
         }
 
-        int T = Math.min(360, budgetMinutes);
-        int R = Math.max(0, maxReviewSlots);
-        int K = Math.max(0, maxNew);
+        int reviewCandidateCount = (int) filteredCandidates.stream()
+                .filter(c -> c.getType() == PlanItemType.REVISION || c.getType() == PlanItemType.RETRY)
+                .count();
+        int newCandidateCount = (int) filteredCandidates.stream()
+                .filter(c -> c.getType() == PlanItemType.NEW_PROBLEM)
+                .count();
+
+        int T = Math.min(480, Math.max(0, budgetMinutes));
+        int R = Math.min(Math.max(0, maxReviewSlots), reviewCandidateCount);
+        int K = Math.min(Math.max(0, maxNew), newCandidateCount);
         int n = filteredCandidates.size();
 
-        double[][][][] dp = new double[n + 1][T + 1][R + 1][K + 1];
+        if (T <= 0 || (R == 0 && K == 0) || n == 0) {
+            return Collections.emptyList();
+        }
+
+        int statesPerItem = (T + 1) * (R + 1) * (K + 1);
+        BitSet picked = new BitSet(n * statesPerItem);
+        double[][][] dp = new double[T + 1][R + 1][K + 1];
 
         for (int i = 0; i < n; i++) {
             PlanCandidate c = filteredCandidates.get(i);
-            int timeCost = c.getTimeMinutes();
+            int timeCost = Math.max(1, c.getTimeMinutes());
             int rCost = (c.getType() == PlanItemType.REVISION || c.getType() == PlanItemType.RETRY) ? 1 : 0;
             int kCost = (c.getType() == PlanItemType.NEW_PROBLEM) ? 1 : 0;
+            double val = c.getValue();
 
-            for (int t = 0; t <= T; t++) {
-                for (int r = 0; r <= R; r++) {
-                    for (int k = 0; k <= K; k++) {
-                        // Do not pick item i
-                        double maxVal = dp[i][t][r][k];
+            int itemOffset = i * statesPerItem;
 
-                        // Pick item i if within remaining capacity
-                        if (t >= timeCost && r >= rCost && k >= kCost) {
-                            double withItem = dp[i][t - timeCost][r - rCost][k - kCost] + c.getValue();
-                            if (withItem > maxVal) {
-                                maxVal = withItem;
-                            }
+            for (int t = T; t >= timeCost; t--) {
+                int tOffset = t * (R + 1);
+                for (int r = R; r >= rCost; r--) {
+                    int trOffset = (tOffset + r) * (K + 1);
+                    for (int k = K; k >= kCost; k--) {
+                        double withItem = dp[t - timeCost][r - rCost][k - kCost] + val;
+                        if (withItem > dp[t][r][k] + 1e-9) {
+                            dp[t][r][k] = withItem;
+                            picked.set(itemOffset + trOffset + k);
                         }
-                        dp[i + 1][t][r][k] = maxVal;
                     }
                 }
             }
@@ -78,14 +94,13 @@ public class KnapsackSolver {
 
         for (int i = n - 1; i >= 0; i--) {
             PlanCandidate c = filteredCandidates.get(i);
-            int timeCost = c.getTimeMinutes();
+            int timeCost = Math.max(1, c.getTimeMinutes());
             int rCost = (c.getType() == PlanItemType.REVISION || c.getType() == PlanItemType.RETRY) ? 1 : 0;
             int kCost = (c.getType() == PlanItemType.NEW_PROBLEM) ? 1 : 0;
 
             if (curT >= timeCost && curR >= rCost && curK >= kCost) {
-                double valWithItem = dp[i][curT - timeCost][curR - rCost][curK - kCost] + c.getValue();
-                if (Math.abs(dp[i + 1][curT][curR][curK] - valWithItem) < 1e-6 &&
-                        dp[i + 1][curT][curR][curK] > dp[i][curT][curR][curK]) {
+                int bitIdx = i * statesPerItem + ((curT * (R + 1) + curR) * (K + 1) + curK);
+                if (picked.get(bitIdx)) {
                     selected.add(c);
                     curT -= timeCost;
                     curR -= rCost;

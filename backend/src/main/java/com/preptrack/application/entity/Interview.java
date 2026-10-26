@@ -32,6 +32,9 @@ public class Interview {
     @Column(name = "round_name", length = 100)
     private String roundName;
 
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
     @Column(name = "raw_feedback", columnDefinition = "TEXT")
     private String rawFeedback;
 

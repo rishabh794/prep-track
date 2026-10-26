@@ -62,25 +62,21 @@ public class CandidateCollector {
         // 2. Due Revisions
         List<RevisionCard> dueCards = revisionCardRepository.findDueCardsWithProblem(userId, planDate);
 
-        // 3. New Problems from selected sheets
+        // 3. New Problems from selected sheets (batched in 1 query)
         List<UserSheet> userSheets = userSheetRepository.findByUserIdWithSheet(userId);
+        List<Long> sheetIds = userSheets.stream().map(us -> us.getSheet().getId()).toList();
+        List<SheetProblem> sheetProblems = sheetIds.isEmpty() ? Collections.emptyList()
+                : sheetProblemRepository.findBySheetIdInOrderByDisplayOrderAsc(sheetIds);
+
         List<UserProblemStatus> solvedStatuses = userProblemStatusRepository.findByUserIdAndStatusIn(
                 userId, List.of(ProblemStatus.SOLVED_INDEPENDENTLY, ProblemStatus.SOLVED_WITH_HELP)
         );
         Set<Long> solvedProblemIds = new HashSet<>();
+        Set<Long> independentlySolvedProblemIds = new HashSet<>();
         for (UserProblemStatus s : solvedStatuses) {
             solvedProblemIds.add(s.getProblem().getId());
-        }
-
-        List<Problem> rawNewProblems = new ArrayList<>();
-        for (UserSheet us : userSheets) {
-            List<SheetProblem> sheetProblems = sheetProblemRepository
-                    .findBySheetIdOrderByDisplayOrderAsc(us.getSheet().getId());
-            for (SheetProblem sp : sheetProblems) {
-                Problem p = sp.getProblem();
-                if (!solvedProblemIds.contains(p.getId())) {
-                    rawNewProblems.add(p);
-                }
+            if (s.getStatus() == ProblemStatus.SOLVED_INDEPENDENTLY) {
+                independentlySolvedProblemIds.add(s.getProblem().getId());
             }
         }
 
@@ -88,7 +84,7 @@ public class CandidateCollector {
         Set<Long> allProblemIds = new HashSet<>();
         attemptedStatuses.forEach(ups -> allProblemIds.add(ups.getProblem().getId()));
         dueCards.forEach(card -> allProblemIds.add(card.getProblem().getId()));
-        rawNewProblems.forEach(p -> allProblemIds.add(p.getId()));
+        sheetProblems.forEach(sp -> allProblemIds.add(sp.getProblem().getId()));
 
         Map<Long, List<ProblemPattern>> patternsByProblemId = new HashMap<>();
         if (!allProblemIds.isEmpty()) {
@@ -98,6 +94,31 @@ public class CandidateCollector {
             }
         }
 
+        // Compute true per-pattern counts across distinct subscribed sheet problems
+        Map<Long, Integer> patternTotalInSheets = new HashMap<>();
+        Map<Long, Integer> patternSolvedInSheets = new HashMap<>();
+        Set<Long> distinctSheetProblemIds = new HashSet<>();
+        for (SheetProblem sp : sheetProblems) {
+            Long pid = sp.getProblem().getId();
+            if (distinctSheetProblemIds.add(pid)) {
+                List<ProblemPattern> pps = patternsByProblemId.get(pid);
+                if (pps != null) {
+                    for (ProblemPattern pp : pps) {
+                        Long patternId = pp.getPattern().getId();
+                        patternTotalInSheets.merge(patternId, 1, Integer::sum);
+                        if (independentlySolvedProblemIds.contains(pid)) {
+                            patternSolvedInSheets.merge(patternId, 1, Integer::sum);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Batch pre-fetch prerequisites for retry and revision problems
+        List<Long> retryAndRevisionProblemIds = new ArrayList<>();
+        attemptedStatuses.forEach(ups -> retryAndRevisionProblemIds.add(ups.getProblem().getId()));
+        dueCards.forEach(card -> retryAndRevisionProblemIds.add(card.getProblem().getId()));
+        Map<Long, Problem> prereqMap = followUpAssigner.getPrereqMap(retryAndRevisionProblemIds);
 
         // Process 1: Retries
         for (UserProblemStatus ups : attemptedStatuses) {
@@ -105,11 +126,12 @@ public class CandidateCollector {
             seenProblemIds.add(p.getId());
 
             List<ProblemPattern> pps = patternsByProblemId.getOrDefault(p.getId(), Collections.emptyList());
-            FollowUpAssignment followUp = followUpAssigner.assign(p, ups.getLastFailureReason());
+            FollowUpAssignment followUp = followUpAssigner.assign(p, ups.getLastFailureReason(), prereqMap);
             MaintenanceScorer.ScoredResult scored = maintenanceScorer.score(
                     userId, p, targetLevel, planDate, true,
                     followUp != null ? followUp.getFollowUpType() : null,
-                    pps, userStateMap, upcomingInterviews
+                    pps, userStateMap, upcomingInterviews, null,
+                    patternTotalInSheets, patternSolvedInSheets
             );
 
             int time = p.getEstimatedMinutes() != null ? p.getEstimatedMinutes() : 30;
@@ -125,6 +147,7 @@ public class CandidateCollector {
                     .primaryPatternId(scored.primaryPatternId)
                     .interviewDays(scored.interviewDays)
                     .interviewCompany(scored.interviewCompany)
+                    .isOverdue(false)
                     .build());
         }
 
@@ -139,10 +162,15 @@ public class CandidateCollector {
             List<ProblemPattern> pps = patternsByProblemId.getOrDefault(p.getId(), Collections.emptyList());
             MaintenanceScorer.ScoredResult scored = maintenanceScorer.score(
                     userId, p, targetLevel, planDate, false, card.getRequiredFollowUp(),
-                    pps, userStateMap, upcomingInterviews
+                    pps, userStateMap, upcomingInterviews, card.getNextReviewDate(),
+                    patternTotalInSheets, patternSolvedInSheets
             );
 
             int time = revisionTimeEstimator.estimateMinutes(card);
+            String followUpDetail = card.getRequiredFollowUp() != null
+                    ? followUpAssigner.getDetailForType(p, card.getRequiredFollowUp(), prereqMap)
+                    : null;
+            boolean isOverdue = card.getNextReviewDate() != null && card.getNextReviewDate().isBefore(planDate);
 
             candidates.add(PlanCandidate.builder()
                     .problem(p)
@@ -151,38 +179,73 @@ public class CandidateCollector {
                     .value(scored.value)
                     .valueBreakdown(scored.breakdown)
                     .followUpType(card.getRequiredFollowUp())
+                    .followUpDetail(followUpDetail)
                     .primaryPatternId(scored.primaryPatternId)
                     .interviewDays(scored.interviewDays)
                     .interviewCompany(scored.interviewCompany)
+                    .isOverdue(isOverdue)
                     .build());
         }
 
-        // Process 3: New Problems
-        Set<Long> scheduledNewPrimaryPatterns = new HashSet<>();
-        for (Problem p : rawNewProblems) {
-            if (seenProblemIds.contains(p.getId())) {
-                continue;
+        // Process 3: New Problems - group by primary pattern, admit top 2 per pattern
+        List<Problem> rawNewProblems = new ArrayList<>();
+        Set<Long> sheetSeenIds = new HashSet<>();
+        for (SheetProblem sp : sheetProblems) {
+            Problem p = sp.getProblem();
+            if (!solvedProblemIds.contains(p.getId()) && !seenProblemIds.contains(p.getId()) && sheetSeenIds.add(p.getId())) {
+                rawNewProblems.add(p);
             }
-            seenProblemIds.add(p.getId());
+        }
 
+        Map<Long, List<Problem>> newProblemsByPattern = new LinkedHashMap<>();
+        for (Problem p : rawNewProblems) {
             List<ProblemPattern> pps = patternsByProblemId.getOrDefault(p.getId(), Collections.emptyList());
-            AcquisitionScorer.ScoredResult scored = acquisitionScorer.score(
-                    userId, p, targetLevel, planDate, scheduledNewPrimaryPatterns,
-                    pps, userStateMap, upcomingInterviews
-            );
+            Long primaryPatternId = null;
+            double maxWeight = -1.0;
+            for (ProblemPattern pp : pps) {
+                double weight = pp.getWeight() != null ? pp.getWeight() : 1.0;
+                if (weight > maxWeight) {
+                    maxWeight = weight;
+                    primaryPatternId = pp.getPattern().getId();
+                }
+            }
+            newProblemsByPattern.computeIfAbsent(primaryPatternId != null ? primaryPatternId : -1L, k -> new ArrayList<>()).add(p);
+        }
 
-            int time = p.getEstimatedMinutes() != null ? p.getEstimatedMinutes() : 30;
+        Set<Long> scheduledNewPrimaryPatterns = new HashSet<>();
+        for (Map.Entry<Long, List<Problem>> entry : newProblemsByPattern.entrySet()) {
+            List<Problem> problemsForPattern = entry.getValue();
+            int toTake = Math.min(2, problemsForPattern.size());
 
-            candidates.add(PlanCandidate.builder()
-                    .problem(p)
-                    .type(PlanItemType.NEW_PROBLEM)
-                    .timeMinutes(time)
-                    .value(scored.value)
-                    .valueBreakdown(scored.breakdown)
-                    .primaryPatternId(scored.primaryPatternId)
-                    .interviewDays(scored.interviewDays)
-                    .interviewCompany(scored.interviewCompany)
-                    .build());
+            for (int i = 0; i < toTake; i++) {
+                Problem p = problemsForPattern.get(i);
+                seenProblemIds.add(p.getId());
+
+                List<ProblemPattern> pps = patternsByProblemId.getOrDefault(p.getId(), Collections.emptyList());
+                AcquisitionScorer.ScoredResult scored = acquisitionScorer.score(
+                        userId, p, targetLevel, planDate, scheduledNewPrimaryPatterns,
+                        pps, userStateMap, upcomingInterviews,
+                        patternTotalInSheets, patternSolvedInSheets
+                );
+
+                if (scored.primaryPatternId != null) {
+                    scheduledNewPrimaryPatterns.add(scored.primaryPatternId);
+                }
+
+                int time = p.getEstimatedMinutes() != null ? p.getEstimatedMinutes() : 30;
+
+                candidates.add(PlanCandidate.builder()
+                        .problem(p)
+                        .type(PlanItemType.NEW_PROBLEM)
+                        .timeMinutes(time)
+                        .value(scored.value)
+                        .valueBreakdown(scored.breakdown)
+                        .primaryPatternId(scored.primaryPatternId)
+                        .interviewDays(scored.interviewDays)
+                        .interviewCompany(scored.interviewCompany)
+                        .isOverdue(false)
+                        .build());
+            }
         }
 
         return candidates;

@@ -145,7 +145,7 @@ public class OnboardingService {
                 .interviewDate(request.getInterviewDate())
                 .roundName("Initial Technical Round")
                 .outcome(InterviewOutcome.UPCOMING)
-                .rawFeedback(request.getNotes())
+                .notes(request.getNotes())
                 .build();
         interview = interviewRepository.save(interview);
 

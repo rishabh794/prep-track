@@ -15,5 +15,6 @@ public class PatternProjectionDto {
     private Double projectedSkill;
     private Double currentRetention;
     private Double projectedRetention;
+    private Double companyRelevance;
     private TriageStatus status;
 }

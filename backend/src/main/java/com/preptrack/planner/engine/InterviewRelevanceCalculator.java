@@ -61,15 +61,55 @@ public class InterviewRelevanceCalculator {
         }
 
         String company = nearest.getApplication() != null ? nearest.getApplication().getCompanyName() : "Upcoming";
+        double companyRelevance = (pattern != null && company != null)
+                ? calculateCompanyPatternRelevance(company, pattern.getName())
+                : 1.0;
         // Proximity boost: closer to interview (within 14 days) gives higher relevance
         double boost = 0.5;
-        double relevance = 1.0 + boost * ((14.0 - (double) minDays) / 14.0);
+        double relevance = companyRelevance * (1.0 + boost * ((14.0 - (double) minDays) / 14.0));
 
         return InterviewContext.builder()
                 .relevanceMultiplier(Math.round(relevance * 100.0) / 100.0)
                 .daysRemaining(minDays)
                 .companyName(company)
                 .build();
+    }
+
+    public double calculateCompanyPatternRelevance(String companyName, String patternName) {
+        String company = companyName != null ? companyName.toLowerCase().trim() : "";
+        String pattern = patternName != null ? patternName.toLowerCase() : "";
+
+        // Low-frequency patterns for specific companies
+        if (company.contains("google")) {
+            if (pattern.contains("trie") || pattern.contains("bit manipulation")) {
+                return 0.4;
+            }
+            if (pattern.contains("dp") || pattern.contains("pointer") || pattern.contains("window")
+                    || pattern.contains("graph") || pattern.contains("stack")) {
+                return 1.2;
+            }
+        } else if (company.contains("meta") || company.contains("facebook")) {
+            if (pattern.contains("trie")) {
+                return 0.4;
+            }
+            if (pattern.contains("pointer") || pattern.contains("window") || pattern.contains("tree")) {
+                return 1.2;
+            }
+        } else if (company.contains("amazon")) {
+            if (pattern.contains("bit manipulation")) {
+                return 0.4;
+            }
+            if (pattern.contains("bfs") || pattern.contains("dfs") || pattern.contains("heap") || pattern.contains("topological")) {
+                return 1.2;
+            }
+        }
+
+        // Generic tech company low-frequency patterns
+        if (pattern.contains("trie") || pattern.contains("bit manipulation")) {
+            return 0.5;
+        }
+
+        return 1.0;
     }
 
     public double getEffectiveInterviewBoost(com.preptrack.pattern.entity.UserPatternState state, LocalDate currentDate) {

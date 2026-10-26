@@ -148,7 +148,7 @@ class OnboardingIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(75)))
                 .andExpect(jsonPath("$[0].canonicalTitle").isString())
-                .andExpect(jsonPath("$[0].status", is("NOT_STARTED")))
+                .andExpect(jsonPath("$[0].status", is("UNSOLVED")))
                 .andExpect(jsonPath("$[0].patterns").isArray());
     }
 }

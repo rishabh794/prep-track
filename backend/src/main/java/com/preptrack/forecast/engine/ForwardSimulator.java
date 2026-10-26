@@ -109,14 +109,14 @@ public class ForwardSimulator {
 
             int revisionsDone = 0;
             for (SimState s : revisionCandidates) {
-                if (revisionsDone >= maxRev || remainingTime < 15) {
+                if (revisionsDone >= maxRev || remainingTime < 5) {
                     break;
                 }
-                // Perform revision
+                // Perform revision (5 min baseline)
                 s.simStability = Math.min(365.0, s.simStability * 1.45);
                 s.simSkill = Math.min(1.0, s.simSkill + 0.02);
                 s.simLastPracticedDay = d;
-                remainingTime -= 15;
+                remainingTime -= 5;
                 revisionsDone++;
             }
 
@@ -179,6 +179,7 @@ public class ForwardSimulator {
                     .projectedSkill(projSkillRound)
                     .currentRetention(curRetRound)
                     .projectedRetention(projRetRound)
+                    .companyRelevance(s.companyRelevance)
                     .status(status)
                     .build());
 
@@ -225,11 +226,11 @@ public class ForwardSimulator {
             double targetSkill
     ) {
         // 1. CONSIDER_DROPPING condition:
-        // Low company frequency or very low starting skill with short horizon
-        if ((s.companyRelevance <= 0.5 || s.availableProblems <= 1) && projSkill < 0.40) {
+        // Strictly low company frequency or low initial skill on low-relevance pattern with short horizon
+        if (s.companyRelevance <= 0.5 && projSkill < 0.40) {
             return TriageStatus.CONSIDER_DROPPING;
         }
-        if (daysRemaining < 14 && s.initialSkill < 0.20 && projSkill < 0.35) {
+        if (daysRemaining < 14 && s.initialSkill < 0.20 && projSkill < 0.35 && s.companyRelevance <= 0.8) {
             return TriageStatus.CONSIDER_DROPPING;
         }
 
@@ -274,9 +275,11 @@ public class ForwardSimulator {
             }
         }
 
-        // 3. CONSIDER_DROPPING advice
+        // 3. CONSIDER_DROPPING advice strictly for low company frequency patterns
         for (PatternProjectionDto p : projections) {
-            if (p.getStatus() == TriageStatus.CONSIDER_DROPPING && recommendations.size() < 3) {
+            if (p.getStatus() == TriageStatus.CONSIDER_DROPPING
+                    && p.getCompanyRelevance() != null && p.getCompanyRelevance() <= 0.5
+                    && recommendations.size() < 3) {
                 recommendations.add(String.format("%s problems are low-frequency for %s — consider dropping to save 3 sessions",
                         p.getPattern(), company));
                 break;

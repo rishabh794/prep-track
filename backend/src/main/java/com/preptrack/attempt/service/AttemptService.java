@@ -51,6 +51,9 @@ public class AttemptService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + userEmail));
 
+        // Lock user row to serialize concurrent attempt submissions and avoid unique constraint races
+        userRepository.findByIdForUpdate(user.getId());
+
         Problem problem = problemRepository.findById(request.getProblemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Problem not found with id: " + request.getProblemId()));
 
@@ -95,13 +98,13 @@ public class AttemptService {
             }
             status.setIndependentSolves((status.getIndependentSolves() != null ? status.getIndependentSolves() : 0) + 1);
         } else if (request.getOutcome() == AttemptOutcome.SOLVED_WITH_HELP) {
-            newStatus = ProblemStatus.SOLVED_WITH_HELP;
+            newStatus = status.getStatus() == ProblemStatus.SOLVED_INDEPENDENTLY ? ProblemStatus.SOLVED_INDEPENDENTLY : ProblemStatus.SOLVED_WITH_HELP;
             if (status.getFirstSolvedAt() == null) {
                 status.setFirstSolvedAt(now);
             }
         } else {
-            // COULD_NOT_SOLVE -> status = ATTEMPTED (does NOT count in progress)
-            newStatus = ProblemStatus.ATTEMPTED;
+            // COULD_NOT_SOLVE: Only set ATTEMPTED if the problem was never previously solved
+            newStatus = (status.getFirstSolvedAt() != null) ? status.getStatus() : ProblemStatus.ATTEMPTED;
         }
 
         status.setStatus(newStatus);

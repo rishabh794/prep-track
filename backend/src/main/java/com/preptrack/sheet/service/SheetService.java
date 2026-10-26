@@ -40,12 +40,15 @@ public class SheetService {
     @Transactional(readOnly = true)
     public List<AvailableSheetResponse> getAvailableSheets() {
         List<Sheet> sheets = sheetRepository.findByIsActiveTrue();
+        Map<Long, Long> countsBySheet = sheetProblemRepository.countProblemsGroupedBySheet().stream()
+                .collect(Collectors.toMap(r -> (Long) r[0], r -> (Long) r[1]));
+
         return sheets.stream().map(s -> AvailableSheetResponse.builder()
                 .id(s.getId())
                 .name(s.getName())
                 .description(s.getDescription())
                 .sourceUrl(s.getSourceUrl())
-                .totalProblems(sheetProblemRepository.countBySheetId(s.getId()))
+                .totalProblems(countsBySheet.getOrDefault(s.getId(), 0L))
                 .build()
         ).collect(Collectors.toList());
     }
@@ -65,9 +68,17 @@ public class SheetService {
                 .map(s -> s.getProblem().getId())
                 .collect(Collectors.toSet());
 
+        List<Long> sheetIds = userSheets.stream().map(us -> us.getSheet().getId()).toList();
+        List<SheetProblem> allSheetProblems = sheetIds.isEmpty()
+                ? Collections.emptyList()
+                : sheetProblemRepository.findBySheetIdInOrderByDisplayOrderAsc(sheetIds);
+
+        Map<Long, List<SheetProblem>> problemsBySheetId = allSheetProblems.stream()
+                .collect(Collectors.groupingBy(sp -> sp.getSheet().getId()));
+
         return userSheets.stream().map(us -> {
             Sheet sheet = us.getSheet();
-            List<SheetProblem> problems = sheetProblemRepository.findBySheetIdOrderByDisplayOrderAsc(sheet.getId());
+            List<SheetProblem> problems = problemsBySheetId.getOrDefault(sheet.getId(), Collections.emptyList());
             long total = problems.size();
             long solved = problems.stream()
                     .filter(sp -> solvedProblemIds.contains(sp.getProblem().getId()))
@@ -124,7 +135,7 @@ public class SheetService {
 
         return sheetProblems.stream().map(sp -> {
             ProblemStatus status = statusMap.get(sp.getProblem().getId());
-            String statusStr = status != null ? status.name() : "NOT_STARTED";
+            String statusStr = status != null ? status.name() : ProblemStatus.UNSOLVED.name();
 
             return SheetProblemResponse.builder()
                     .id(sp.getProblem().getId())

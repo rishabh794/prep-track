@@ -49,6 +49,9 @@ public class PlannerService {
     public DailyPlanResponse getOrCreatePlanForToday(Long userId, LocalDate date) {
         LocalDate planDate = date != null ? date : LocalDate.now();
 
+        // Lock user row to serialize concurrent plan generations and prevent unique constraint races
+        userRepository.findByIdForUpdate(userId);
+
         Optional<DailyPlan> existingPlan = dailyPlanRepository.findByUserIdAndPlanDateWithItems(userId, planDate);
         if (existingPlan.isPresent()) {
             return mapToResponse(existingPlan.get());
@@ -57,15 +60,129 @@ public class PlannerService {
         return generateAndPersistPlan(userId, planDate);
     }
 
+    @Transactional(readOnly = true)
+    public DailyPlanResponse getPlanByDate(Long userId, LocalDate date) {
+        LocalDate planDate = date != null ? date : LocalDate.now();
+        if (planDate.equals(LocalDate.now())) {
+            return getOrCreatePlanForToday(userId, planDate);
+        }
+        DailyPlan plan = dailyPlanRepository.findByUserIdAndPlanDateWithItems(userId, planDate)
+                .orElseThrow(() -> new ResourceNotFoundException("No plan found for date: " + planDate));
+        return mapToResponse(plan);
+    }
+
     @Transactional
     public DailyPlanResponse regeneratePlan(Long userId, LocalDate date) {
         LocalDate planDate = date != null ? date : LocalDate.now();
-        dailyPlanRepository.findByUserIdAndPlanDate(userId, planDate)
-                .ifPresent(existing -> {
-                    dailyPlanRepository.delete(existing);
-                    dailyPlanRepository.flush();
-                });
-        return generateAndPersistPlan(userId, planDate);
+        userRepository.findByIdForUpdate(userId);
+
+        Optional<DailyPlan> existingOpt = dailyPlanRepository.findByUserIdAndPlanDateWithItems(userId, planDate);
+        if (existingOpt.isEmpty()) {
+            return generateAndPersistPlan(userId, planDate);
+        }
+
+        DailyPlan existing = existingOpt.get();
+        List<DailyPlanItem> itemsList = existing.getItems() != null ? existing.getItems() : new ArrayList<>();
+
+        List<DailyPlanItem> preservedItems = itemsList.stream()
+                .filter(i -> Boolean.TRUE.equals(i.getCompleted()) || Boolean.TRUE.equals(i.getSkipped()))
+                .toList();
+
+        List<DailyPlanItem> toRemove = itemsList.stream()
+                .filter(i -> !Boolean.TRUE.equals(i.getCompleted()) && !Boolean.TRUE.equals(i.getSkipped()))
+                .toList();
+
+        // Remove from collection and explicitly delete + flush to avoid unique constraint conflict on re-selected problems
+        itemsList.removeAll(toRemove);
+        if (!toRemove.isEmpty()) {
+            dailyPlanItemRepository.deleteAll(toRemove);
+            dailyPlanItemRepository.flush();
+        }
+
+        UserSettings settings = userSettingsRepository.findByUserId(userId)
+                .orElse(UserSettings.builder()
+                        .dailyTimeBudgetMin(90)
+                        .maxNewProblemsDay(3)
+                        .maxRevisionsDay(10)
+                        .targetSkillLevel(0.8)
+                        .build());
+
+        int budget = settings.getDailyTimeBudgetMin() != null ? settings.getDailyTimeBudgetMin() : 90;
+        int maxReview = settings.getMaxRevisionsDay() != null ? settings.getMaxRevisionsDay() : 10;
+        int maxNew = settings.getMaxNewProblemsDay() != null ? settings.getMaxNewProblemsDay() : 3;
+        double targetSkill = settings.getTargetSkillLevel() != null ? settings.getTargetSkillLevel() : 0.8;
+
+        int completedMinutes = preservedItems.stream()
+                .filter(i -> Boolean.TRUE.equals(i.getCompleted()))
+                .mapToInt(DailyPlanItem::getEstimatedMinutes)
+                .sum();
+        int completedReviews = (int) preservedItems.stream()
+                .filter(i -> Boolean.TRUE.equals(i.getCompleted()) && (i.getItemType() == PlanItemType.REVISION || i.getItemType() == PlanItemType.RETRY))
+                .count();
+        int completedNew = (int) preservedItems.stream()
+                .filter(i -> Boolean.TRUE.equals(i.getCompleted()) && i.getItemType() == PlanItemType.NEW_PROBLEM)
+                .count();
+
+        int remainingBudget = Math.max(0, budget - completedMinutes);
+        int remainingReview = Math.max(0, maxReview - completedReviews);
+        int remainingNew = Math.max(0, maxNew - completedNew);
+
+        Set<Long> preservedProblemIds = preservedItems.stream()
+                .map(i -> i.getProblem().getId())
+                .collect(Collectors.toSet());
+
+        List<PlanCandidate> selected = Collections.emptyList();
+        if (remainingBudget > 0 && (remainingReview > 0 || remainingNew > 0)) {
+            List<PlanCandidate> candidates = candidateCollector.collectCandidates(userId, targetSkill, planDate);
+            List<PlanCandidate> availableCandidates = candidates.stream()
+                    .filter(c -> !preservedProblemIds.contains(c.getProblem().getId()))
+                    .toList();
+            selected = knapsackSolver.solve(availableCandidates, remainingBudget, remainingReview, remainingNew);
+        }
+
+        int order = 1;
+        for (DailyPlanItem preserved : itemsList) {
+            preserved.setDisplayOrder(order++);
+        }
+
+        for (PlanCandidate c : selected) {
+            String reason = reasonFormatter.format(c, targetSkill);
+            String jsonStr = null;
+            try {
+                jsonStr = objectMapper.writeValueAsString(c.getValueBreakdown());
+            } catch (JsonProcessingException e) {
+                log.warn("Failed to serialize ValueBreakdown for problem {}", c.getProblem().getId(), e);
+            }
+
+            DailyPlanItem item = DailyPlanItem.builder()
+                    .dailyPlan(existing)
+                    .problem(c.getProblem())
+                    .itemType(c.getType())
+                    .displayOrder(order++)
+                    .estimatedMinutes(c.getTimeMinutes())
+                    .valueScore(c.getValue())
+                    .valueJson(jsonStr)
+                    .reasonSummary(reason)
+                    .followUpType(c.getFollowUpType())
+                    .followUpDetail(c.getFollowUpDetail())
+                    .completed(false)
+                    .skipped(false)
+                    .build();
+            itemsList.add(item);
+        }
+
+        int totalMinutes = itemsList.stream().mapToInt(DailyPlanItem::getEstimatedMinutes).sum();
+        double totalValue = itemsList.stream().mapToDouble(DailyPlanItem::getValueScore).sum();
+        int overdueTotal = revisionCardRepository.countOverdueCards(userId, planDate);
+        int overdueShown = (int) selected.stream().filter(PlanCandidate::isOverdue).count();
+
+        existing.setTotalEstimatedMin(totalMinutes);
+        existing.setTotalValue(Math.round(totalValue * 100.0) / 100.0);
+        existing.setOverdueTotal(overdueTotal);
+        existing.setOverdueShown(overdueShown);
+
+        DailyPlan saved = dailyPlanRepository.save(existing);
+        return mapToResponse(saved);
     }
 
     @Transactional
@@ -106,7 +223,7 @@ public class PlannerService {
         // 3. Count overdue cards
         int overdueTotal = revisionCardRepository.countOverdueCards(userId, planDate);
         int overdueShown = (int) selected.stream()
-                .filter(c -> c.getType() == PlanItemType.REVISION || c.getType() == PlanItemType.RETRY)
+                .filter(PlanCandidate::isOverdue)
                 .count();
 
         // 4. Build and persist DailyPlan

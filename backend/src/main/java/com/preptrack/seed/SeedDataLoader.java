@@ -17,6 +17,7 @@ import com.preptrack.sheet.repository.SheetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import java.io.InputStream;
 import java.util.*;
 
 @Component
+@ConditionalOnProperty(name = "preptrack.seed.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 @Slf4j
 public class SeedDataLoader implements CommandLineRunner {
@@ -41,6 +43,12 @@ public class SeedDataLoader implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        if (patternRepo.count() >= 36 && problemRepo.count() >= 122 && relationRepo.count() >= 30 && sheetProblemRepo.count() >= 250) {
+            log.info("Seed data is already up-to-date ({} patterns, {} problems, {} relations). Fast-exiting seed load.",
+                    patternRepo.count(), problemRepo.count(), relationRepo.count());
+            return;
+        }
+
         log.info("Starting optimized seed data sync...");
 
         try {

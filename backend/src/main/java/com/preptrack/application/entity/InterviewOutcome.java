@@ -4,5 +4,6 @@ public enum InterviewOutcome {
     UPCOMING,
     PASSED,
     FAILED,
+    PARTIAL,
     PENDING
 }

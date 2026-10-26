@@ -44,6 +44,10 @@ public class UserSettings {
     @Column(name = "onboarding_complete")
     private Boolean onboardingComplete = false;
 
+    @Builder.Default
+    @Column(name = "timezone", length = 50)
+    private String timezone = "UTC";
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

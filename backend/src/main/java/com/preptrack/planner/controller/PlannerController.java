@@ -40,7 +40,7 @@ public class PlannerController {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
         LocalDate targetDate = LocalDate.parse(date);
-        DailyPlanResponse response = plannerService.getOrCreatePlanForToday(user.getId(), targetDate);
+        DailyPlanResponse response = plannerService.getPlanByDate(user.getId(), targetDate);
         return ResponseEntity.ok(response);
     }
 

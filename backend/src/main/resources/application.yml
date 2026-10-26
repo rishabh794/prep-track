@@ -29,7 +29,7 @@ spring:
     locations: classpath:db/migration
 
 jwt:
-  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  secret: ${JWT_SECRET:}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 cors:
@@ -40,3 +40,17 @@ openai:
   model: ${OPENAI_MODEL:gpt-4o-mini}
   base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
   timeout-ms: ${OPENAI_TIMEOUT_MS:5000}
+  max-tokens: ${OPENAI_MAX_TOKENS:300}
+
+preptrack:
+  seed:
+    enabled: ${PREPTRACK_SEED_ENABLED:true}
+  engine:
+    default-budget-minutes: 90
+    default-max-new-problems: 3
+    default-max-revisions: 10
+    default-target-skill: 0.8
+    maintenance-floor: 0.15
+    diversity-multiplier: 0.5
+    retry-boost-multiplier: 2.0
+

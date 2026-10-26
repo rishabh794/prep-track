@@ -58,6 +58,21 @@ public class AcquisitionScorer {
             Map<Long, UserPatternState> stateMap,
             List<com.preptrack.application.entity.Interview> upcomingInterviews
     ) {
+        return score(userId, problem, targetLevel, planDate, scheduledNewPrimaryPatterns, problemPatterns, stateMap, upcomingInterviews, null, null);
+    }
+
+    public ScoredResult score(
+            Long userId,
+            Problem problem,
+            double targetLevel,
+            LocalDate planDate,
+            Set<Long> scheduledNewPrimaryPatterns,
+            List<ProblemPattern> problemPatterns,
+            Map<Long, UserPatternState> stateMap,
+            List<com.preptrack.application.entity.Interview> upcomingInterviews,
+            Map<Long, Integer> patternTotalInSheets,
+            Map<Long, Integer> patternSolvedInSheets
+    ) {
         List<PatternContribution> contributions = new ArrayList<>();
         double sumValue = 0.0;
         Long primaryPatternId = null;
@@ -92,6 +107,12 @@ public class AcquisitionScorer {
             double contrib = weight * skillGap * totalRelevance;
             sumValue += contrib;
 
+            int totalInSheets = patternTotalInSheets != null
+                    ? patternTotalInSheets.getOrDefault(pattern.getId(), problemPatterns.size())
+                    : problemPatterns.size();
+            int solvedInSheets = patternSolvedInSheets != null
+                    ? patternSolvedInSheets.getOrDefault(pattern.getId(), solves)
+                    : solves;
 
             contributions.add(PatternContribution.builder()
                     .patternId(pattern.getId())
@@ -101,8 +122,8 @@ public class AcquisitionScorer {
                     .skill(Math.round(skill * 100.0) / 100.0)
                     .linkWeight(weight)
                     .contribution(Math.round(contrib * 100.0) / 100.0)
-                    .independentSolves(solves)
-                    .totalInSheets(problemPatterns.size())
+                    .independentSolves(solvedInSheets)
+                    .totalInSheets(totalInSheets)
                     .build());
         }
 

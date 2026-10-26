@@ -6,6 +6,9 @@ import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.common.exception.ResourceNotFoundException;
 import com.preptrack.revision.dto.RevisionCardDto;
 import com.preptrack.revision.service.RevisionService;
+import com.preptrack.revision.dto.ReviewRevisionRequest;
+import com.preptrack.revision.dto.SubmitRecallRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -40,11 +43,11 @@ public class RevisionController {
     public ResponseEntity<RecallCheckResponseDto> submitRecall(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long cardId,
-            @RequestBody Map<String, String> body
+            @RequestBody @Valid SubmitRecallRequest body
     ) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
-        String userApproach = body.get("userApproach");
+        String userApproach = body.getUserApproach();
         RecallCheckResponseDto response = revisionService.submitRecallCheck(user.getId(), cardId, userApproach);
         return ResponseEntity.ok(response);
     }
@@ -53,7 +56,7 @@ public class RevisionController {
     public ResponseEntity<RevisionCardDto> reviewRevision(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long cardId,
-            @RequestBody Map<String, Object> body
+            @RequestBody @Valid ReviewRevisionRequest body
     ) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
@@ -65,11 +68,11 @@ public class RevisionController {
     public ResponseEntity<RecallCheckResponseDto> submitRecallByProblem(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long problemId,
-            @RequestBody Map<String, String> body
+            @RequestBody @Valid SubmitRecallRequest body
     ) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
-        String userApproach = body.get("userApproach");
+        String userApproach = body.getUserApproach();
         RecallCheckResponseDto response = revisionService.submitRecallCheckByProblemId(user.getId(), problemId, userApproach);
         return ResponseEntity.ok(response);
     }
@@ -78,7 +81,7 @@ public class RevisionController {
     public ResponseEntity<RevisionCardDto> reviewRevisionByProblem(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long problemId,
-            @RequestBody Map<String, Object> body
+            @RequestBody @Valid ReviewRevisionRequest body
     ) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));

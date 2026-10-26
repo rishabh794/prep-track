@@ -24,4 +24,5 @@ public class PlanCandidate {
     private Long primaryPatternId;
     private Long interviewDays;
     private String interviewCompany;
+    private boolean isOverdue;
 }

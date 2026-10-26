@@ -15,10 +15,16 @@ public interface SheetProblemRepository extends JpaRepository<SheetProblem, Long
     @Query("SELECT sp FROM SheetProblem sp JOIN FETCH sp.problem WHERE sp.sheet.id = :sheetId ORDER BY sp.displayOrder ASC")
     List<SheetProblem> findBySheetIdOrderByDisplayOrderAsc(@Param("sheetId") Long sheetId);
 
+    @Query("SELECT sp FROM SheetProblem sp JOIN FETCH sp.problem WHERE sp.sheet.id IN :sheetIds ORDER BY sp.displayOrder ASC")
+    List<SheetProblem> findBySheetIdInOrderByDisplayOrderAsc(@Param("sheetIds") List<Long> sheetIds);
+
     @Query("SELECT sp.problem.id FROM SheetProblem sp WHERE sp.sheet.name = :sheetName")
     Set<Long> findProblemIdsBySheetName(@Param("sheetName") String sheetName);
 
     long countBySheetId(Long sheetId);
+
+    @Query("SELECT sp.sheet.id, COUNT(sp) FROM SheetProblem sp GROUP BY sp.sheet.id")
+    List<Object[]> countProblemsGroupedBySheet();
 
     boolean existsBySheetIdAndProblemId(Long sheetId, Long problemId);
 

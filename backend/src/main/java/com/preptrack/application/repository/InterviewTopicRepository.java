@@ -14,6 +14,9 @@ public interface InterviewTopicRepository extends JpaRepository<InterviewTopic, 
     @Query("SELECT it FROM InterviewTopic it JOIN FETCH it.pattern WHERE it.interview.id = :interviewId")
     List<InterviewTopic> findByInterviewIdWithPattern(@Param("interviewId") Long interviewId);
 
+    @Query("SELECT it FROM InterviewTopic it JOIN FETCH it.pattern WHERE it.interview.id IN :interviewIds")
+    List<InterviewTopic> findByInterviewIdInWithPattern(@Param("interviewIds") List<Long> interviewIds);
+
     List<InterviewTopic> findByInterviewId(Long interviewId);
 
     void deleteByInterviewId(Long interviewId);

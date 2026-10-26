@@ -25,8 +25,7 @@ public class FeedbackExtractionService {
     private final PatternRepository patternRepository;
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
-        You are extracting structured data from coding interview feedback.
-
+        You are an expert interview coach analyzing candidate debriefs.
         Given a student's description of their interview experience, extract:
         1. DSA patterns mentioned. Match against this available list:
         %s
@@ -54,7 +53,7 @@ public class FeedbackExtractionService {
 
                 String systemPrompt = String.format(SYSTEM_PROMPT_TEMPLATE, patternListStr);
                 String response = openAiClient.chat(systemPrompt, rawFeedback, null);
-                return parseExtractionResult(response, allPatterns);
+                return parseExtractionResult(response, rawFeedback, allPatterns);
             } catch (AiClientException e) {
                 log.warn("OpenAI interview feedback extraction failed, falling back to rule-based parser: {}", e.getMessage());
             }
@@ -63,13 +62,15 @@ public class FeedbackExtractionService {
         return extractFallback(rawFeedback, allPatterns);
     }
 
-    private FeedbackExtractionResult parseExtractionResult(String json, List<Pattern> allPatterns) {
+    private FeedbackExtractionResult parseExtractionResult(String json, String rawFeedback, List<Pattern> allPatterns) {
         try {
             Map<String, Pattern> slugMap = allPatterns.stream()
                     .collect(Collectors.toMap(Pattern::getSlug, p -> p, (a, b) -> a));
 
             JsonNode root = objectMapper.readTree(json);
             List<ExtractedPatternDto> extractedList = new ArrayList<>();
+            Set<Long> seenPatternIds = new HashSet<>();
+
             JsonNode patternsNode = root.path("extractedPatterns");
             if (patternsNode.isArray()) {
                 for (JsonNode item : patternsNode) {
@@ -78,7 +79,7 @@ public class FeedbackExtractionService {
                     double confidence = item.path("confidence").asDouble(0.85);
 
                     Pattern matched = slugMap.get(slug);
-                    if (matched != null) {
+                    if (matched != null && seenPatternIds.add(matched.getId())) {
                         extractedList.add(ExtractedPatternDto.builder()
                                 .patternId(matched.getId())
                                 .patternSlug(matched.getSlug())
@@ -96,10 +97,11 @@ public class FeedbackExtractionService {
                     .extractedPatterns(extractedList)
                     .suggestedOutcome(suggestedOutcome)
                     .requiresConfirmation(true)
+                    .aiUsed(true)
                     .build();
         } catch (Exception e) {
             log.warn("Failed to parse OpenAI feedback extraction JSON: {}", json);
-            return extractFallback(json, allPatterns);
+            return extractFallback(rawFeedback, allPatterns);
         }
     }
 
@@ -107,33 +109,39 @@ public class FeedbackExtractionService {
         String lower = rawFeedback != null ? rawFeedback.toLowerCase() : "";
         List<ExtractedPatternDto> extracted = new ArrayList<>();
 
+        // Exclude "hard" so hard difficulty problems aren't flagged as weakness
         Set<String> weaknessWords = Set.of(
                 "struggled", "weak", "failed", "couldn't", "could not", "trouble", "missed",
-                "stuck", "blanked", "difficult", "hard", "confused", "bug", "too slow", "bad"
+                "stuck", "blanked", "difficult", "confused", "bug", "too slow", "bad"
         );
 
         for (Pattern pattern : allPatterns) {
             String nameLower = pattern.getName().toLowerCase();
             String slugLower = pattern.getSlug().replace("-", " ").toLowerCase();
 
-            boolean matched = false;
-            if (lower.contains(nameLower) || lower.contains(slugLower)) {
-                matched = true;
+            int matchIdx = -1;
+            if (lower.contains(nameLower)) {
+                matchIdx = lower.indexOf(nameLower);
+            } else if (lower.contains(slugLower)) {
+                matchIdx = lower.indexOf(slugLower);
             } else {
-                // Check simplified keywords (e.g. "monotonic stack" -> "monotonic")
                 for (String part : nameLower.split("[\\s/]+")) {
                     if (part.length() > 4 && lower.contains(part) && !isGenericPart(part)) {
-                        matched = true;
+                        matchIdx = lower.indexOf(part);
                         break;
                     }
                 }
             }
 
-            if (matched) {
-                // Determine if weakness words appear around this pattern
+            if (matchIdx != -1) {
+                // Determine if weakness words appear in a local window (within 60 chars) around this pattern match
+                int start = Math.max(0, matchIdx - 60);
+                int end = Math.min(lower.length(), matchIdx + 60);
+                String window = lower.substring(start, end);
+
                 boolean wasWeak = false;
                 for (String w : weaknessWords) {
-                    if (lower.contains(w)) {
+                    if (java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(w) + "\\b").matcher(window).find()) {
                         wasWeak = true;
                         break;
                     }
@@ -160,6 +168,7 @@ public class FeedbackExtractionService {
                 .extractedPatterns(extracted)
                 .suggestedOutcome(suggestedOutcome)
                 .requiresConfirmation(true)
+                .aiUsed(false)
                 .build();
     }
 

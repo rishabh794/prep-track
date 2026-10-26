@@ -12,16 +12,33 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HexFormat;
+import jakarta.annotation.PostConstruct;
 import java.util.function.Function;
 
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
+    @Value("${jwt.secret:}")
     private String jwtSecret;
 
     @Value("${jwt.expiration-ms:86400000}")
     private long jwtExpirationMs;
+
+    @PostConstruct
+    public void validateJwtSecret() {
+        if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
+            throw new IllegalStateException("JWT secret is not configured. Please set JWT_SECRET in environment or .env file.");
+        }
+        byte[] keyBytes;
+        if (jwtSecret.length() >= 64 && jwtSecret.matches("^[0-9a-fA-F]+$")) {
+            keyBytes = HexFormat.of().parseHex(jwtSecret);
+        } else {
+            keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+        }
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT secret must be at least 256 bits (32 bytes). Current decoded length: " + keyBytes.length + " bytes.");
+        }
+    }
 
     private SecretKey getSigningKey() {
         byte[] keyBytes;

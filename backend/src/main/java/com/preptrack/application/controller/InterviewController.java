@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+import com.preptrack.ai.dto.ExtractFeedbackRequest;
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/api/interviews")
 @RequiredArgsConstructor
@@ -39,10 +42,9 @@ public class InterviewController {
     public ResponseEntity<FeedbackExtractionResult> submitFeedback(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id,
-            @RequestBody Map<String, String> body
+            @Valid @RequestBody ExtractFeedbackRequest request
     ) {
-        String rawFeedback = body.get("rawFeedback");
-        FeedbackExtractionResult result = applicationService.submitFeedback(userDetails.getUsername(), id, rawFeedback);
+        FeedbackExtractionResult result = applicationService.submitFeedback(userDetails.getUsername(), id, request.getRawFeedback());
         return ResponseEntity.ok(result);
     }
 

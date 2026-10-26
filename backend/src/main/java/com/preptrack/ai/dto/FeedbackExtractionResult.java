@@ -15,4 +15,5 @@ public class FeedbackExtractionResult {
     private List<ExtractedPatternDto> extractedPatterns;
     private String suggestedOutcome;
     private boolean requiresConfirmation;
+    private boolean aiUsed;
 }

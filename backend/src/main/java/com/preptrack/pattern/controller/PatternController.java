@@ -32,8 +32,18 @@ public class PatternController {
     private final UserRepository userRepository;
 
     @GetMapping("/patterns")
-    public ResponseEntity<List<Pattern>> getAllPatterns() {
-        return ResponseEntity.ok(patternRepository.findAll());
+    public ResponseEntity<List<com.preptrack.pattern.dto.PatternDto>> getAllPatterns() {
+        List<com.preptrack.pattern.dto.PatternDto> result = patternRepository.findAll().stream()
+                .map(p -> com.preptrack.pattern.dto.PatternDto.builder()
+                        .id(p.getId())
+                        .name(p.getName())
+                        .slug(p.getSlug())
+                        .parentTopic(p.getParentTopic())
+                        .description(p.getDescription())
+                        .difficultyTier(p.getDifficultyTier())
+                        .build())
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/user/pattern-states")

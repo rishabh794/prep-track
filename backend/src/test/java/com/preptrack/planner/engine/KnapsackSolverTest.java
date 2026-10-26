@@ -89,4 +89,34 @@ class KnapsackSolverTest {
         long newCount = plan.stream().filter(c -> c.getType() == PlanItemType.NEW_PROBLEM).count();
         assertThat(newCount).isLessThanOrEqualTo(3);
     }
+
+    @Test
+    @DisplayName("Handles maximum settings and 0-minute candidate without heap exhaustion or crash")
+    void testLargeCandidatePoolAndZeroTimeCostSafe() {
+        List<PlanCandidate> candidates = new ArrayList<>();
+        // 100 revisions, 100 new problems, with some 0-min time costs
+        for (int i = 1; i <= 100; i++) {
+            candidates.add(PlanCandidate.builder()
+                    .problem(Problem.builder().id((long) i).canonicalTitle("Rev " + i).build())
+                    .type(PlanItemType.REVISION)
+                    .timeMinutes(i % 5 == 0 ? 0 : 5)
+                    .value(1.5)
+                    .build());
+        }
+        for (int i = 101; i <= 200; i++) {
+            candidates.add(PlanCandidate.builder()
+                    .problem(Problem.builder().id((long) i).canonicalTitle("New " + i).build())
+                    .type(PlanItemType.NEW_PROBLEM)
+                    .timeMinutes(30)
+                    .value(2.5)
+                    .build());
+        }
+
+        // Maximum allowed user settings: 480 min budget, 50 revisions, 20 new problems
+        List<PlanCandidate> plan = solver.solve(candidates, 480, 50, 20);
+
+        assertThat(plan).isNotEmpty();
+        int totalTime = plan.stream().mapToInt(PlanCandidate::getTimeMinutes).sum();
+        assertThat(totalTime).isLessThanOrEqualTo(480);
+    }
 }

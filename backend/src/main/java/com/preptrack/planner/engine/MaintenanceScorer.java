@@ -63,13 +63,29 @@ public class MaintenanceScorer {
             Map<Long, UserPatternState> stateMap,
             List<com.preptrack.application.entity.Interview> upcomingInterviews
     ) {
+        return score(userId, problem, targetLevel, planDate, isRetry, followUpType, problemPatterns, stateMap, upcomingInterviews, null, null, null);
+    }
+
+    public ScoredResult score(
+            Long userId,
+            Problem problem,
+            double targetLevel,
+            LocalDate planDate,
+            boolean isRetry,
+            FollowUpType followUpType,
+            List<ProblemPattern> problemPatterns,
+            Map<Long, UserPatternState> stateMap,
+            List<com.preptrack.application.entity.Interview> upcomingInterviews,
+            LocalDate nextReviewDate,
+            Map<Long, Integer> patternTotalInSheets,
+            Map<Long, Integer> patternSolvedInSheets
+    ) {
         List<PatternContribution> contributions = new ArrayList<>();
         double sumValue = 0.0;
         Long primaryPatternId = null;
         double maxWeight = -1.0;
 
         InterviewRelevanceCalculator.InterviewContext interviewCtx = null;
-
 
         for (ProblemPattern pp : problemPatterns) {
             Pattern pattern = pp.getPattern();
@@ -80,12 +96,16 @@ public class MaintenanceScorer {
                 primaryPatternId = pattern.getId();
             }
 
-            UserPatternState state = stateMap.get(pattern.getId());
+            UserPatternState state = stateMap != null ? stateMap.get(pattern.getId()) : null;
             double skill = (state != null && state.getSkill() != null) ? state.getSkill() : 0.0;
             double stability = (state != null && state.getStability() != null) ? state.getStability() : 1.0;
             int solves = (state != null && state.getIndependentSolves() != null) ? state.getIndependentSolves() : 0;
 
-            double retention = retentionCalculator.compute(state != null ? state.getLastPracticedAt() : null, stability);
+            double retention = retentionCalculator.compute(
+                    state != null ? state.getLastPracticedAt() : null,
+                    stability,
+                    planDate != null ? planDate.atStartOfDay() : java.time.LocalDateTime.now()
+            );
 
             interviewCtx = upcomingInterviews != null
                     ? interviewRelevanceCalculator.calculateWithInterviews(upcomingInterviews, pattern, planDate)
@@ -102,6 +122,13 @@ public class MaintenanceScorer {
             double contrib = weight * maintenanceNeed * forgettingFactor;
             sumValue += contrib;
 
+            int totalInSheets = patternTotalInSheets != null
+                    ? patternTotalInSheets.getOrDefault(pattern.getId(), problemPatterns.size())
+                    : problemPatterns.size();
+            int solvedInSheets = patternSolvedInSheets != null
+                    ? patternSolvedInSheets.getOrDefault(pattern.getId(), solves)
+                    : solves;
+
             contributions.add(PatternContribution.builder()
                     .patternId(pattern.getId())
                     .patternName(pattern.getName())
@@ -110,8 +137,8 @@ public class MaintenanceScorer {
                     .skill(Math.round(skill * 100.0) / 100.0)
                     .linkWeight(weight)
                     .contribution(Math.round(contrib * 100.0) / 100.0)
-                    .independentSolves(solves)
-                    .totalInSheets(problemPatterns.size())
+                    .independentSolves(solvedInSheets)
+                    .totalInSheets(totalInSheets)
                     .build());
         }
 
@@ -127,6 +154,13 @@ public class MaintenanceScorer {
                 case TIMED_RETRY -> 1.3;
             };
             sumValue *= followUpMultiplier;
+        }
+
+        // Overdue age bonus for due revisions
+        if (!isRetry && nextReviewDate != null && planDate != null && nextReviewDate.isBefore(planDate)) {
+            long overdueDays = java.time.temporal.ChronoUnit.DAYS.between(nextReviewDate, planDate);
+            double overdueBonus = 1.0 + Math.min(0.5, overdueDays * 0.05);
+            sumValue *= overdueBonus;
         }
 
         double finalTotal = Math.round(sumValue * 100.0) / 100.0;

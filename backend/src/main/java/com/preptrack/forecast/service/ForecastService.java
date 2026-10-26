@@ -44,6 +44,7 @@ public class ForecastService {
     private final UserProblemStatusRepository userProblemStatusRepository;
     private final PatternRepository patternRepository;
     private final ForwardSimulator forwardSimulator;
+    private final com.preptrack.planner.engine.InterviewRelevanceCalculator interviewRelevanceCalculator;
 
     @Transactional(readOnly = true)
     public ReadinessForecastDto getForecastForInterview(Long userId, Long interviewId) {
@@ -84,15 +85,15 @@ public class ForecastService {
                 .filter(ps -> ps.getPattern() != null && ps.getPattern().getName() != null)
                 .collect(Collectors.toMap(ps -> ps.getPattern().getName(), ps -> ps, (a, b) -> a));
 
-        // 3. Find tracked problem IDs from user sheets
+        // 3. Find tracked problem IDs from user sheets (batched in 1 query)
         List<UserSheet> userSheets = userSheetRepository.findByUserIdWithSheet(userId);
+        List<Long> sheetIds = userSheets.stream().map(us -> us.getSheet().getId()).toList();
+        List<SheetProblem> sps = sheetIds.isEmpty() ? Collections.emptyList()
+                : sheetProblemRepository.findBySheetIdInOrderByDisplayOrderAsc(sheetIds);
         Set<Long> problemIds = new HashSet<>();
-        for (UserSheet us : userSheets) {
-            List<SheetProblem> sps = sheetProblemRepository.findBySheetIdOrderByDisplayOrderAsc(us.getSheet().getId());
-            for (SheetProblem sp : sps) {
-                if (sp.getProblem() != null) {
-                    problemIds.add(sp.getProblem().getId());
-                }
+        for (SheetProblem sp : sps) {
+            if (sp.getProblem() != null) {
+                problemIds.add(sp.getProblem().getId());
             }
         }
 
@@ -171,39 +172,6 @@ public class ForecastService {
     }
 
     private double calculateCompanyPatternRelevance(String companyName, String patternName) {
-        String company = companyName != null ? companyName.toLowerCase().trim() : "";
-        String pattern = patternName != null ? patternName.toLowerCase() : "";
-
-        // Low-frequency patterns for specific companies
-        if (company.contains("google")) {
-            if (pattern.contains("trie") || pattern.contains("bit manipulation")) {
-                return 0.4;
-            }
-            if (pattern.contains("dp") || pattern.contains("pointer") || pattern.contains("window")
-                    || pattern.contains("graph") || pattern.contains("stack")) {
-                return 1.2;
-            }
-        } else if (company.contains("meta") || company.contains("facebook")) {
-            if (pattern.contains("trie")) {
-                return 0.4;
-            }
-            if (pattern.contains("pointer") || pattern.contains("window") || pattern.contains("tree")) {
-                return 1.2;
-            }
-        } else if (company.contains("amazon")) {
-            if (pattern.contains("bit manipulation")) {
-                return 0.4;
-            }
-            if (pattern.contains("bfs") || pattern.contains("dfs") || pattern.contains("heap") || pattern.contains("topological")) {
-                return 1.2;
-            }
-        }
-
-        // Generic tech company low-frequency patterns
-        if (pattern.contains("trie") || pattern.contains("bit manipulation")) {
-            return 0.5;
-        }
-
-        return 1.0;
+        return interviewRelevanceCalculator.calculateCompanyPatternRelevance(companyName, patternName);
     }
 }

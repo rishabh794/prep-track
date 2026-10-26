@@ -85,7 +85,7 @@ class ScoringEdgeCasesTest {
                 .lastPracticedAt(LocalDateTime.now().minusDays(10))
                 .build();
         when(userPatternStateRepository.findByUserIdAndPatternIdIn(eq(1L), any())).thenReturn(List.of(state));
-        when(retentionCalculator.compute(any(), eq(5.0))).thenReturn(0.25);
+        when(retentionCalculator.compute(any(), eq(5.0), any())).thenReturn(0.25);
         when(interviewRelevanceCalculator.calculate(any(), any(), any())).thenReturn(
                 InterviewRelevanceCalculator.InterviewContext.builder().relevanceMultiplier(1.0).build()
         );
