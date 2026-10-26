@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.preptrack.auth.security.UserDetailsImpl;
+
 @RestController
 @RequestMapping("/api/attempts")
 @RequiredArgsConstructor
@@ -25,7 +27,9 @@ public class AttemptController {
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CreateAttemptRequest request
     ) {
-        AttemptResponseDto response = attemptService.recordAttempt(userDetails.getUsername(), request);
-        return ResponseEntity.ok(response);
+        if (userDetails instanceof UserDetailsImpl impl) {
+            return ResponseEntity.ok(attemptService.recordAttempt(impl.getId(), request));
+        }
+        return ResponseEntity.ok(attemptService.recordAttempt(userDetails.getUsername(), request));
     }
 }

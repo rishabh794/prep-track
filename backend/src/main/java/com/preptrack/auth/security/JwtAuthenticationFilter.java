@@ -14,7 +14,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.Claims;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 import java.io.IOException;
+import java.util.Collections;
 
 @Component
 @RequiredArgsConstructor
@@ -22,6 +26,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsServiceImpl userDetailsService;
+
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.equals("/api/health")
+                || path.equals("/api/auth/login")
+                || path.equals("/api/auth/register")
+                || path.equals("/api/sheets/available");
+    }
 
     @Override
     protected void doFilterInternal(
@@ -38,27 +51,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7);
-        final String userEmail;
 
         try {
-            userEmail = jwtService.extractEmail(jwt);
-        } catch (Exception e) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+            Claims claims = jwtService.parseValidClaims(jwt);
+            String email = claims.getSubject();
+            Number userIdNum = claims.get("userId", Number.class);
 
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails principal;
+                if (userIdNum != null) {
+                    principal = new UserDetailsImpl(
+                            userIdNum.longValue(),
+                            email,
+                            "",
+                            "",
+                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                    );
+                } else {
+                    principal = this.userDetailsService.loadUserByUsername(email);
+                }
 
-            if (jwtService.validateToken(jwt, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
+                        principal,
                         null,
-                        userDetails.getAuthorities()
+                        principal.getAuthorities()
                 );
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
+        } catch (Exception ignored) {
+            // Invalid or expired token -> leave context unauthenticated
         }
 
         filterChain.doFilter(request, response);

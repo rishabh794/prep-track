@@ -104,6 +104,14 @@ public class JwtService {
         return expiration.before(new Date());
     }
 
+    public Claims parseValidClaims(String token) {
+        Claims claims = extractAllClaims(token);
+        if (claims.getExpiration().before(new Date())) {
+            throw new JwtException("Token expired");
+        }
+        return claims;
+    }
+
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())

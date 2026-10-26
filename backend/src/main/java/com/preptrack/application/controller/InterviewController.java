@@ -5,6 +5,7 @@ import com.preptrack.ai.dto.FeedbackExtractionResult;
 import com.preptrack.application.dto.InterviewResponseDto;
 import com.preptrack.application.dto.InterviewTopicDto;
 import com.preptrack.application.service.ApplicationService;
+import com.preptrack.auth.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,6 +29,9 @@ public class InterviewController {
     public ResponseEntity<List<InterviewResponseDto>> getAllInterviews(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
+        if (userDetails instanceof UserDetailsImpl impl) {
+            return ResponseEntity.ok(applicationService.getAllInterviews(impl.getId()));
+        }
         return ResponseEntity.ok(applicationService.getAllInterviews(userDetails.getUsername()));
     }
 
@@ -35,6 +39,9 @@ public class InterviewController {
     public ResponseEntity<List<InterviewResponseDto>> getUpcomingInterviews(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
+        if (userDetails instanceof UserDetailsImpl impl) {
+            return ResponseEntity.ok(applicationService.getUpcomingInterviews(impl.getId()));
+        }
         return ResponseEntity.ok(applicationService.getUpcomingInterviews(userDetails.getUsername()));
     }
 

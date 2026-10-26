@@ -29,8 +29,7 @@ public class User {
     @Column(name = "display_name", nullable = false, length = 100)
     private String displayName;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private UserSettings settings;
+
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

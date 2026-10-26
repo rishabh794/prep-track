@@ -50,9 +50,14 @@ public class AttemptService {
     public AttemptResponseDto recordAttempt(String userEmail, CreateAttemptRequest request) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + userEmail));
+        return recordAttempt(user.getId(), request);
+    }
 
-        // Lock user row to serialize concurrent attempt submissions and avoid unique constraint races
-        userRepository.findByIdForUpdate(user.getId());
+    @Transactional
+    public AttemptResponseDto recordAttempt(Long userId, CreateAttemptRequest request) {
+        // Lock user row directly to serialize concurrent attempt submissions and avoid unique constraint races
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         Problem problem = problemRepository.findById(request.getProblemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Problem not found with id: " + request.getProblemId()));

@@ -61,7 +61,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { token: newToken } = res.data;
     localStorage.setItem('preptrack_token', newToken);
     setToken(newToken);
-    await refreshUser();
     return res.data;
   };
 
@@ -70,7 +69,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { token: newToken } = res.data;
     localStorage.setItem('preptrack_token', newToken);
     setToken(newToken);
-    await refreshUser();
     return res.data;
   };
 

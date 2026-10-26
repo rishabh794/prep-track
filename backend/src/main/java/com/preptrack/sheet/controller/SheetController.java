@@ -1,5 +1,6 @@
 package com.preptrack.sheet.controller;
 
+import com.preptrack.auth.security.UserDetailsImpl;
 import com.preptrack.sheet.dto.AvailableSheetResponse;
 import com.preptrack.sheet.dto.SheetProblemResponse;
 import com.preptrack.sheet.dto.UserSheetResponse;
@@ -28,6 +29,9 @@ public class SheetController {
 
     @GetMapping("/api/user/sheets")
     public ResponseEntity<List<UserSheetResponse>> getUserSheets(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails instanceof UserDetailsImpl impl) {
+            return ResponseEntity.ok(sheetService.getUserSheets(impl.getId()));
+        }
         return ResponseEntity.ok(sheetService.getUserSheets(userDetails.getUsername()));
     }
 
@@ -36,6 +40,9 @@ public class SheetController {
             @PathVariable Long sheetId,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        return ResponseEntity.ok(sheetService.getSheetProblems(sheetId, userDetails.getUsername()));
+        if (userDetails instanceof UserDetailsImpl impl) {
+            return ResponseEntity.ok(sheetService.getSheetProblems(sheetId, impl.getId()));
+        }
+        return ResponseEntity.ok(sheetService.getSheetProblems(sheetId, userDetails != null ? userDetails.getUsername() : null));
     }
 }

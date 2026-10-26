@@ -85,17 +85,11 @@ public class ForecastService {
                 .filter(ps -> ps.getPattern() != null && ps.getPattern().getName() != null)
                 .collect(Collectors.toMap(ps -> ps.getPattern().getName(), ps -> ps, (a, b) -> a));
 
-        // 3. Find tracked problem IDs from user sheets (batched in 1 query)
+        // 3. Find tracked problem IDs from user sheets (scalar lightweight query)
         List<UserSheet> userSheets = userSheetRepository.findByUserIdWithSheet(userId);
         List<Long> sheetIds = userSheets.stream().map(us -> us.getSheet().getId()).toList();
-        List<SheetProblem> sps = sheetIds.isEmpty() ? Collections.emptyList()
-                : sheetProblemRepository.findBySheetIdInOrderByDisplayOrderAsc(sheetIds);
-        Set<Long> problemIds = new HashSet<>();
-        for (SheetProblem sp : sps) {
-            if (sp.getProblem() != null) {
-                problemIds.add(sp.getProblem().getId());
-            }
-        }
+        Set<Long> problemIds = sheetIds.isEmpty() ? Collections.emptySet()
+                : sheetProblemRepository.findDistinctProblemIdsBySheetIdIn(sheetIds);
 
         // 4. Identify which problems user already solved
         List<UserProblemStatus> userStatuses = userProblemStatusRepository.findByUserId(userId);

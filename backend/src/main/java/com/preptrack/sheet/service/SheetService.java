@@ -57,11 +57,15 @@ public class SheetService {
     public List<UserSheetResponse> getUserSheets(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
+        return getUserSheets(user.getId());
+    }
 
-        List<UserSheet> userSheets = userSheetRepository.findByUserIdWithSheet(user.getId());
+    @Transactional(readOnly = true)
+    public List<UserSheetResponse> getUserSheets(Long userId) {
+        List<UserSheet> userSheets = userSheetRepository.findByUserIdWithSheet(userId);
 
         List<UserProblemStatus> solvedStatuses = userProblemStatusRepository.findByUserIdAndStatusIn(
-                user.getId(),
+                userId,
                 List.of(ProblemStatus.SOLVED_INDEPENDENTLY, ProblemStatus.SOLVED_WITH_HELP)
         );
         Set<Long> solvedProblemIds = solvedStatuses.stream()
@@ -69,19 +73,23 @@ public class SheetService {
                 .collect(Collectors.toSet());
 
         List<Long> sheetIds = userSheets.stream().map(us -> us.getSheet().getId()).toList();
-        List<SheetProblem> allSheetProblems = sheetIds.isEmpty()
+        List<Object[]> sheetProblemRows = sheetIds.isEmpty()
                 ? Collections.emptyList()
-                : sheetProblemRepository.findBySheetIdInOrderByDisplayOrderAsc(sheetIds);
+                : sheetProblemRepository.findSheetAndProblemIdsBySheetIdIn(sheetIds);
 
-        Map<Long, List<SheetProblem>> problemsBySheetId = allSheetProblems.stream()
-                .collect(Collectors.groupingBy(sp -> sp.getSheet().getId()));
+        Map<Long, List<Long>> problemsBySheetId = new HashMap<>();
+        for (Object[] row : sheetProblemRows) {
+            Long sId = (Long) row[0];
+            Long pId = (Long) row[1];
+            problemsBySheetId.computeIfAbsent(sId, k -> new ArrayList<>()).add(pId);
+        }
 
         return userSheets.stream().map(us -> {
             Sheet sheet = us.getSheet();
-            List<SheetProblem> problems = problemsBySheetId.getOrDefault(sheet.getId(), Collections.emptyList());
+            List<Long> problems = problemsBySheetId.getOrDefault(sheet.getId(), Collections.emptyList());
             long total = problems.size();
             long solved = problems.stream()
-                    .filter(sp -> solvedProblemIds.contains(sp.getProblem().getId()))
+                    .filter(solvedProblemIds::contains)
                     .count();
             double progressPercent = total > 0 ? Math.round(((double) solved / total) * 1000.0) / 10.0 : 0.0;
 
@@ -99,10 +107,18 @@ public class SheetService {
 
     @Transactional(readOnly = true)
     public List<SheetProblemResponse> getSheetProblems(Long sheetId, String email) {
+        Long userId = null;
+        if (email != null) {
+            User user = userRepository.findByEmail(email).orElse(null);
+            userId = user != null ? user.getId() : null;
+        }
+        return getSheetProblems(sheetId, userId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SheetProblemResponse> getSheetProblems(Long sheetId, Long userId) {
         Sheet sheet = sheetRepository.findById(sheetId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sheet not found with id: " + sheetId));
-
-        User user = userRepository.findByEmail(email).orElse(null);
 
         List<SheetProblem> sheetProblems = sheetProblemRepository.findBySheetIdOrderByDisplayOrderAsc(sheetId);
         if (sheetProblems.isEmpty()) {
@@ -114,8 +130,8 @@ public class SheetService {
                 .collect(Collectors.toList());
 
         Map<Long, ProblemStatus> statusMap = new HashMap<>();
-        if (user != null) {
-            List<UserProblemStatus> userStatuses = userProblemStatusRepository.findByUserIdAndProblemIdIn(user.getId(), problemIds);
+        if (userId != null) {
+            List<UserProblemStatus> userStatuses = userProblemStatusRepository.findByUserIdAndProblemIdIn(userId, problemIds);
             for (UserProblemStatus ups : userStatuses) {
                 statusMap.put(ups.getProblem().getId(), ups.getStatus());
             }

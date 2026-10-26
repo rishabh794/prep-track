@@ -1,7 +1,7 @@
 package com.preptrack.planner.controller;
 
-import com.preptrack.auth.entity.User;
 import com.preptrack.auth.repository.UserRepository;
+import com.preptrack.auth.security.UserDetailsImpl;
 import com.preptrack.common.exception.ResourceNotFoundException;
 import com.preptrack.planner.dto.DailyPlanResponse;
 import com.preptrack.planner.dto.SkipItemRequest;
@@ -22,13 +22,20 @@ public class PlannerController {
     private final PlannerService plannerService;
     private final UserRepository userRepository;
 
+    private Long getUserId(UserDetails userDetails) {
+        if (userDetails instanceof UserDetailsImpl impl) {
+            return impl.getId();
+        }
+        return userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()))
+                .getId();
+    }
+
     @GetMapping("/today")
     public ResponseEntity<DailyPlanResponse> getTodayPlan(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
-        DailyPlanResponse response = plannerService.getOrCreatePlanForToday(user.getId(), LocalDate.now());
+        DailyPlanResponse response = plannerService.getOrCreatePlanForToday(getUserId(userDetails), LocalDate.now());
         return ResponseEntity.ok(response);
     }
 
@@ -37,10 +44,8 @@ public class PlannerController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable String date
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
         LocalDate targetDate = LocalDate.parse(date);
-        DailyPlanResponse response = plannerService.getPlanByDate(user.getId(), targetDate);
+        DailyPlanResponse response = plannerService.getPlanByDate(getUserId(userDetails), targetDate);
         return ResponseEntity.ok(response);
     }
 
@@ -48,9 +53,7 @@ public class PlannerController {
     public ResponseEntity<DailyPlanResponse> regenerateTodayPlan(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
-        DailyPlanResponse response = plannerService.regeneratePlan(user.getId(), LocalDate.now());
+        DailyPlanResponse response = plannerService.regeneratePlan(getUserId(userDetails), LocalDate.now());
         return ResponseEntity.ok(response);
     }
 
@@ -60,10 +63,8 @@ public class PlannerController {
             @PathVariable Long itemId,
             @RequestBody(required = false) SkipItemRequest request
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
         String reason = request != null && request.getReason() != null ? request.getReason() : "Skipped by user";
-        DailyPlanResponse response = plannerService.skipPlanItem(user.getId(), itemId, reason);
+        DailyPlanResponse response = plannerService.skipPlanItem(getUserId(userDetails), itemId, reason);
         return ResponseEntity.ok(response);
     }
 }

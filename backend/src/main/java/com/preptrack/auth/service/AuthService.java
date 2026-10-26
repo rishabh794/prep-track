@@ -50,7 +50,6 @@ public class AuthService {
                 .onboardingComplete(false)
                 .build();
         userSettingsRepository.save(settings);
-        user.setSettings(settings);
 
         UserDetailsImpl userDetails = UserDetailsImpl.build(user);
         String token = jwtService.generateToken(userDetails);
@@ -93,6 +92,13 @@ public class AuthService {
     public UserDto getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+        return getCurrentUser(user.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public UserDto getCurrentUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         UserSettings settings = userSettingsRepository.findByUserId(user.getId()).orElse(null);
 

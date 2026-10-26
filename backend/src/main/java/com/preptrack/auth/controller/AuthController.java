@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.preptrack.auth.security.UserDetailsImpl;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -34,6 +35,9 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<UserDto> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails instanceof UserDetailsImpl impl) {
+            return ResponseEntity.ok(authService.getCurrentUser(impl.getId()));
+        }
         UserDto userDto = authService.getCurrentUser(userDetails.getUsername());
         return ResponseEntity.ok(userDto);
     }

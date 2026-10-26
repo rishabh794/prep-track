@@ -1,7 +1,7 @@
 package com.preptrack.forecast.controller;
 
-import com.preptrack.auth.entity.User;
 import com.preptrack.auth.repository.UserRepository;
+import com.preptrack.auth.security.UserDetailsImpl;
 import com.preptrack.common.exception.ResourceNotFoundException;
 import com.preptrack.forecast.dto.ReadinessForecastDto;
 import com.preptrack.forecast.service.ForecastService;
@@ -27,10 +27,12 @@ public class ForecastController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long interviewId
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
+        Long userId = (userDetails instanceof UserDetailsImpl impl) ? impl.getId()
+                : userRepository.findByEmail(userDetails.getUsername())
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()))
+                        .getId();
 
-        ReadinessForecastDto forecast = forecastService.getForecastForInterview(user.getId(), interviewId);
+        ReadinessForecastDto forecast = forecastService.getForecastForInterview(userId, interviewId);
         return ResponseEntity.ok(forecast);
     }
 }

@@ -14,9 +14,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.preptrack.pattern.dto.PatternStateResponseDto;
+import com.preptrack.pattern.repository.PatternRepository;
+import com.preptrack.planner.engine.RetentionCalculator;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -25,6 +31,8 @@ public class PatternStateService {
 
     private final UserPatternStateRepository userPatternStateRepository;
     private final ProblemPatternRepository problemPatternRepository;
+    private final PatternRepository patternRepository;
+    private final RetentionCalculator retentionCalculator;
 
     @Transactional
     public UserPatternState getOrCreatePatternState(User user, Pattern pattern) {
@@ -132,5 +140,33 @@ public class PatternStateService {
     @Transactional(readOnly = true)
     public List<UserPatternState> getUserPatternStates(Long userId) {
         return userPatternStateRepository.findByUserIdWithPattern(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PatternStateResponseDto> getUserPatternStateDtos(Long userId) {
+        List<Pattern> allPatterns = patternRepository.findAll();
+        List<UserPatternState> states = userPatternStateRepository.findByUserIdWithPattern(userId);
+        Map<Long, UserPatternState> stateMap = states.stream()
+                .collect(Collectors.toMap(s -> s.getPattern().getId(), s -> s));
+
+        return allPatterns.stream().map(p -> {
+            UserPatternState state = stateMap.get(p.getId());
+            double skill = state != null && state.getSkill() != null ? state.getSkill() : 0.0;
+            double stability = state != null && state.getStability() != null ? state.getStability() : 1.0;
+            double retention = retentionCalculator.compute(state != null ? state.getLastPracticedAt() : null, stability);
+
+            return PatternStateResponseDto.builder()
+                    .patternId(p.getId())
+                    .name(p.getName())
+                    .slug(p.getSlug())
+                    .parentTopic(p.getParentTopic())
+                    .skill(Math.round(skill * 100.0) / 100.0)
+                    .retention(Math.round(retention * 100.0) / 100.0)
+                    .stability(Math.round(stability * 10.0) / 10.0)
+                    .lastPracticedAt(state != null ? state.getLastPracticedAt() : null)
+                    .totalAttempts(state != null && state.getTotalAttempts() != null ? state.getTotalAttempts() : 0)
+                    .independentSolves(state != null && state.getIndependentSolves() != null ? state.getIndependentSolves() : 0)
+                    .build();
+        }).toList();
     }
 }

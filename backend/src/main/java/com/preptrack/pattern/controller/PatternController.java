@@ -8,7 +8,7 @@ import com.preptrack.pattern.entity.Pattern;
 import com.preptrack.pattern.entity.UserPatternState;
 import com.preptrack.pattern.repository.PatternRepository;
 import com.preptrack.pattern.service.PatternStateService;
-import com.preptrack.planner.engine.RetentionCalculator;
+import com.preptrack.auth.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,7 +28,6 @@ public class PatternController {
 
     private final PatternRepository patternRepository;
     private final PatternStateService patternStateService;
-    private final RetentionCalculator retentionCalculator;
     private final UserRepository userRepository;
 
     @GetMapping("/patterns")
@@ -50,34 +49,11 @@ public class PatternController {
     public ResponseEntity<List<PatternStateResponseDto>> getUserPatternStates(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
+        Long userId = (userDetails instanceof UserDetailsImpl impl) ? impl.getId()
+                : userRepository.findByEmail(userDetails.getUsername())
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()))
+                        .getId();
 
-        List<Pattern> allPatterns = patternRepository.findAll();
-        List<UserPatternState> states = patternStateService.getUserPatternStates(user.getId());
-        Map<Long, UserPatternState> stateMap = states.stream()
-                .collect(Collectors.toMap(s -> s.getPattern().getId(), s -> s));
-
-        List<PatternStateResponseDto> result = allPatterns.stream().map(p -> {
-            UserPatternState state = stateMap.get(p.getId());
-            double skill = state != null && state.getSkill() != null ? state.getSkill() : 0.0;
-            double stability = state != null && state.getStability() != null ? state.getStability() : 1.0;
-            double retention = retentionCalculator.compute(state != null ? state.getLastPracticedAt() : null, stability);
-
-            return PatternStateResponseDto.builder()
-                    .patternId(p.getId())
-                    .name(p.getName())
-                    .slug(p.getSlug())
-                    .parentTopic(p.getParentTopic())
-                    .skill(Math.round(skill * 100.0) / 100.0)
-                    .retention(Math.round(retention * 100.0) / 100.0)
-                    .stability(Math.round(stability * 10.0) / 10.0)
-                    .lastPracticedAt(state != null ? state.getLastPracticedAt() : null)
-                    .totalAttempts(state != null && state.getTotalAttempts() != null ? state.getTotalAttempts() : 0)
-                    .independentSolves(state != null && state.getIndependentSolves() != null ? state.getIndependentSolves() : 0)
-                    .build();
-        }).toList();
-
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(patternStateService.getUserPatternStateDtos(userId));
     }
 }

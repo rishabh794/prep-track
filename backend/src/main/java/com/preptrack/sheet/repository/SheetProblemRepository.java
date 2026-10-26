@@ -28,6 +28,12 @@ public interface SheetProblemRepository extends JpaRepository<SheetProblem, Long
 
     boolean existsBySheetIdAndProblemId(Long sheetId, Long problemId);
 
+    @Query("SELECT sp.sheet.id, sp.problem.id FROM SheetProblem sp WHERE sp.sheet.id IN :sheetIds")
+    List<Object[]> findSheetAndProblemIdsBySheetIdIn(@Param("sheetIds") java.util.Collection<Long> sheetIds);
+
+    @Query("SELECT DISTINCT sp.problem.id FROM SheetProblem sp WHERE sp.sheet.id IN :sheetIds")
+    Set<Long> findDistinctProblemIdsBySheetIdIn(@Param("sheetIds") java.util.Collection<Long> sheetIds);
+
     @Query("SELECT sp.sheet.name FROM SheetProblem sp WHERE sp.problem.id = :problemId")
     List<String> findSheetNamesByProblemId(@Param("problemId") Long problemId);
 }

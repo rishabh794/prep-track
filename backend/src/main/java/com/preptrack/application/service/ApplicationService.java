@@ -48,14 +48,24 @@ public class ApplicationService {
     @Transactional(readOnly = true)
     public List<InterviewResponseDto> getUpcomingInterviews(String email) {
         User user = getUserByEmail(email);
-        List<Interview> interviews = interviewRepository.findByUserIdAndOutcome(user.getId(), InterviewOutcome.UPCOMING);
+        return getUpcomingInterviews(user.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<InterviewResponseDto> getUpcomingInterviews(Long userId) {
+        List<Interview> interviews = interviewRepository.findByUserIdAndOutcome(userId, InterviewOutcome.UPCOMING);
         return toDtos(interviews);
     }
 
     @Transactional(readOnly = true)
     public List<InterviewResponseDto> getAllInterviews(String email) {
         User user = getUserByEmail(email);
-        List<Interview> interviews = interviewRepository.findByUserId(user.getId());
+        return getAllInterviews(user.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<InterviewResponseDto> getAllInterviews(Long userId) {
+        List<Interview> interviews = interviewRepository.findByUserId(userId);
         return toDtos(interviews);
     }
 
