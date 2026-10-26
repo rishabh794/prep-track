@@ -46,17 +46,30 @@ public class MaintenanceScorer {
             FollowUpType followUpType
     ) {
         List<ProblemPattern> problemPatterns = problemPatternRepository.findByProblemIdWithPattern(problem.getId());
-
         List<Long> patternIds = problemPatterns.stream().map(pp -> pp.getPattern().getId()).toList();
         Map<Long, UserPatternState> stateMap = userPatternStateRepository.findByUserIdAndPatternIdIn(userId, patternIds)
                 .stream().collect(Collectors.toMap(s -> s.getPattern().getId(), s -> s));
+        return score(userId, problem, targetLevel, planDate, isRetry, followUpType, problemPatterns, stateMap, null);
+    }
 
+    public ScoredResult score(
+            Long userId,
+            Problem problem,
+            double targetLevel,
+            LocalDate planDate,
+            boolean isRetry,
+            FollowUpType followUpType,
+            List<ProblemPattern> problemPatterns,
+            Map<Long, UserPatternState> stateMap,
+            List<com.preptrack.application.entity.Interview> upcomingInterviews
+    ) {
         List<PatternContribution> contributions = new ArrayList<>();
         double sumValue = 0.0;
         Long primaryPatternId = null;
         double maxWeight = -1.0;
 
         InterviewRelevanceCalculator.InterviewContext interviewCtx = null;
+
 
         for (ProblemPattern pp : problemPatterns) {
             Pattern pattern = pp.getPattern();
@@ -74,8 +87,12 @@ public class MaintenanceScorer {
 
             double retention = retentionCalculator.compute(state != null ? state.getLastPracticedAt() : null, stability);
 
-            interviewCtx = interviewRelevanceCalculator.calculate(userId, pattern, planDate);
+            interviewCtx = upcomingInterviews != null
+                    ? interviewRelevanceCalculator.calculateWithInterviews(upcomingInterviews, pattern, planDate)
+                    : interviewRelevanceCalculator.calculate(userId, pattern, planDate);
+
             double relevance = interviewCtx.getRelevanceMultiplier();
+
 
             // Maintenance floor: max(0.15, target - skill)
             double maintenanceNeed = Math.max(MAINTENANCE_FLOOR, targetLevel - skill) * relevance;

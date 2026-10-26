@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../api';
 import ProblemDetailModal from '../components/ProblemDetailModal';
+import { AvailableSheet, ProblemDifficulty } from '../types';
+
+interface SheetProblemItem {
+  id: number;
+  canonicalTitle: string;
+  difficulty: ProblemDifficulty;
+  category?: string;
+}
 
 export default function ExploreSheetsPage() {
-  const [sheets, setSheets] = useState([]);
-  const [selectedSheetId, setSelectedSheetId] = useState(null);
-  const [problems, setProblems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedProblemId, setSelectedProblemId] = useState(null);
+  const [sheets, setSheets] = useState<AvailableSheet[]>([]);
+  const [selectedSheetId, setSelectedSheetId] = useState<number | null>(null);
+  const [problems, setProblems] = useState<SheetProblemItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get('/sheets/available')
+    api.get<AvailableSheet[]>('/sheets/available')
       .then((res) => {
         setSheets(res.data);
         if (res.data.length > 0) {
@@ -25,7 +32,7 @@ export default function ExploreSheetsPage() {
   useEffect(() => {
     if (!selectedSheetId) return;
 
-    api.get(`/user/sheets/${selectedSheetId}/problems`)
+    api.get<SheetProblemItem[]>(`/user/sheets/${selectedSheetId}/problems`)
       .then((res) => setProblems(res.data))
       .catch((err) => console.error(err));
   }, [selectedSheetId]);
@@ -101,7 +108,7 @@ export default function ExploreSheetsPage() {
                     border: '1px solid var(--border-subtle)',
                     cursor: 'pointer'
                   }}
-                  onClick={() => setSelectedProblemId(p.id)}
+                  onClick={() => setSelectedProblemId(p.id.toString())}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span className={`badge badge-${p.difficulty.toLowerCase()}`}>

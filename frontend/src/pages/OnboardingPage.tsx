@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import { AvailableSheet } from '../types';
+
+interface DedupSummary {
+  totalProblemsAcrossSheets: number;
+  overlapProblems: number;
+  uniqueProblems: number;
+}
 
 export default function OnboardingPage() {
   const { user, refreshUser } = useAuth();
@@ -17,32 +24,32 @@ export default function OnboardingPage() {
     }
   }, [user, force, navigate]);
 
-  const [step, setStep] = useState(1);
-  const [availableSheets, setAvailableSheets] = useState([]);
-  const [selectedSheetIds, setSelectedSheetIds] = useState([]);
-  const [dedupSummary, setDedupSummary] = useState(null);
+  const [step, setStep] = useState<number>(1);
+  const [availableSheets, setAvailableSheets] = useState<AvailableSheet[]>([]);
+  const [selectedSheetIds, setSelectedSheetIds] = useState<number[]>([]);
+  const [dedupSummary, setDedupSummary] = useState<DedupSummary | null>(null);
 
   // Settings
-  const [dailyTimeBudgetMin, setDailyTimeBudgetMin] = useState(90);
-  const [maxNewProblemsDay, setMaxNewProblemsDay] = useState(3);
-  const [maxRevisionsDay, setMaxRevisionsDay] = useState(10);
-  const [targetSkillLevel, setTargetSkillLevel] = useState(0.8);
+  const [dailyTimeBudgetMin, setDailyTimeBudgetMin] = useState<number>(90);
+  const [maxNewProblemsDay, setMaxNewProblemsDay] = useState<number>(3);
+  const [maxRevisionsDay, setMaxRevisionsDay] = useState<number>(10);
+  const [targetSkillLevel, setTargetSkillLevel] = useState<number>(0.8);
 
   // Interview
-  const [companyName, setCompanyName] = useState('Google');
-  const [role, setRole] = useState('SDE-1');
-  const [interviewDate, setInterviewDate] = useState(() => {
+  const [companyName, setCompanyName] = useState<string>('Google');
+  const [role, setRole] = useState<string>('SDE-1');
+  const [interviewDate, setInterviewDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
     return d.toISOString().split('T')[0];
   });
-  const [notes, setNotes] = useState('Focus on Dynamic Programming and Graphs');
+  const [notes, setNotes] = useState<string>('Focus on Dynamic Programming and Graphs');
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get('/sheets/available')
+    api.get<AvailableSheet[]>('/sheets/available')
       .then((res) => {
         setAvailableSheets(res.data);
         // Default select Blind 75 and NeetCode 150
@@ -54,7 +61,7 @@ export default function OnboardingPage() {
       .catch((err) => console.error(err));
   }, []);
 
-  const handleToggleSheet = (id) => {
+  const handleToggleSheet = (id: number) => {
     if (selectedSheetIds.includes(id)) {
       setSelectedSheetIds(selectedSheetIds.filter((item) => item !== id));
     } else {
@@ -71,10 +78,10 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
-      const res = await api.post('/onboarding/sheets', { sheetIds: selectedSheetIds });
+      const res = await api.post<DedupSummary>('/onboarding/sheets', { sheetIds: selectedSheetIds });
       setDedupSummary(res.data);
       setStep(2);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save sheet selection');
     } finally {
       setLoading(false);
@@ -93,7 +100,7 @@ export default function OnboardingPage() {
         targetSkillLevel
       });
       setStep(3);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update settings');
     } finally {
       setLoading(false);
@@ -114,7 +121,7 @@ export default function OnboardingPage() {
         });
       }
       setStep(4);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save interview target');
     } finally {
       setLoading(false);
@@ -126,8 +133,8 @@ export default function OnboardingPage() {
     try {
       await api.post('/onboarding/complete');
       await refreshUser();
-      navigate('/');
-    } catch (err) {
+      navigate('/today');
+    } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to finalize onboarding');
     } finally {
       setLoading(false);

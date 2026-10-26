@@ -1,12 +1,35 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../api';
+import { User } from '../types';
 
-const AuthContext = createContext(null);
+interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<any>;
+  register: (email: string, password: string, displayName: string) => Promise<any>;
+  logout: () => void;
+  refreshUser: () => Promise<void>;
+}
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem('preptrack_token'));
-  const [loading, setLoading] = useState(true);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  token: null,
+  loading: true,
+  login: async () => {},
+  register: async () => {},
+  logout: () => {},
+  refreshUser: async () => {},
+});
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('preptrack_token'));
+  const [loading, setLoading] = useState<boolean>(true);
 
   const refreshUser = async () => {
     const savedToken = localStorage.getItem('preptrack_token');
@@ -17,7 +40,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const res = await api.get('/auth/me');
+      const res = await api.get<User>('/auth/me');
       setUser(res.data);
     } catch (err) {
       console.error('Failed to fetch user profile', err);
@@ -33,7 +56,7 @@ export const AuthProvider = ({ children }) => {
     refreshUser();
   }, [token]);
 
-  const login = async (email, password) => {
+  const login = async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
     const { token: newToken } = res.data;
     localStorage.setItem('preptrack_token', newToken);
@@ -42,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  const register = async (email, password, displayName) => {
+  const register = async (email: string, password: string, displayName: string) => {
     const res = await api.post('/auth/register', { email, password, displayName });
     const { token: newToken } = res.data;
     localStorage.setItem('preptrack_token', newToken);

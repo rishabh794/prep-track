@@ -12,7 +12,7 @@ export default function Navbar() {
     navigate('/auth');
   };
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <header style={{
@@ -69,15 +69,36 @@ export default function Navbar() {
 
         {/* Navigation Links */}
         <nav style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {user && (
+            <Link
+              to="/today"
+              style={{
+                padding: '8px 14px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                color: isActive('/today') || isActive('/') ? '#ffffff' : 'var(--text-muted)',
+                background: isActive('/today') || isActive('/') ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                border: isActive('/today') || isActive('/') ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <span style={{ fontSize: '1rem' }}>📅</span> Today's Plan
+            </Link>
+          )}
+
           <Link
-            to="/"
+            to="/sheets"
             style={{
               padding: '8px 14px',
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.9rem',
               fontWeight: 600,
-              color: isActive('/') ? '#ffffff' : 'var(--text-muted)',
-              background: isActive('/') ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+              color: isActive('/sheets') ? '#ffffff' : 'var(--text-muted)',
+              background: isActive('/sheets') ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
               transition: 'all 0.2s ease'
             }}
           >

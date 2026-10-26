@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import { Interview } from '../types';
 
 export default function InterviewsPage() {
-  const [interviews, setInterviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [showAddModal, setShowAddModal] = useState<boolean>(false);
 
   // New Interview Form
-  const [companyName, setCompanyName] = useState('');
-  const [role, setRole] = useState('SDE-1');
-  const [interviewDate, setInterviewDate] = useState('');
-  const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [companyName, setCompanyName] = useState<string>('');
+  const [role, setRole] = useState<string>('SDE-1');
+  const [interviewDate, setInterviewDate] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   const fetchInterviews = () => {
     setLoading(true);
-    api.get('/interviews/upcoming')
+    api.get<Interview[]>('/interviews/upcoming')
       .then((res) => setInterviews(res.data))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
@@ -25,7 +26,7 @@ export default function InterviewsPage() {
     fetchInterviews();
   }, []);
 
-  const handleAddInterview = async (e) => {
+  const handleAddInterview = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
@@ -40,17 +41,17 @@ export default function InterviewsPage() {
       setInterviewDate('');
       setNotes('');
       fetchInterviews();
-    } catch (err) {
+    } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to schedule interview target');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const calculateDaysRemaining = (targetDate) => {
+  const calculateDaysRemaining = (targetDate: string) => {
     const today = new Date();
     const target = new Date(targetDate);
-    const diffTime = target - today;
+    const diffTime = target.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };

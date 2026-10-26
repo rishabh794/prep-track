@@ -42,11 +42,22 @@ public class AcquisitionScorer {
             Set<Long> scheduledNewPrimaryPatterns
     ) {
         List<ProblemPattern> problemPatterns = problemPatternRepository.findByProblemIdWithPattern(problem.getId());
-
         List<Long> patternIds = problemPatterns.stream().map(pp -> pp.getPattern().getId()).toList();
         Map<Long, UserPatternState> stateMap = userPatternStateRepository.findByUserIdAndPatternIdIn(userId, patternIds)
                 .stream().collect(Collectors.toMap(s -> s.getPattern().getId(), s -> s));
+        return score(userId, problem, targetLevel, planDate, scheduledNewPrimaryPatterns, problemPatterns, stateMap, null);
+    }
 
+    public ScoredResult score(
+            Long userId,
+            Problem problem,
+            double targetLevel,
+            LocalDate planDate,
+            Set<Long> scheduledNewPrimaryPatterns,
+            List<ProblemPattern> problemPatterns,
+            Map<Long, UserPatternState> stateMap,
+            List<com.preptrack.application.entity.Interview> upcomingInterviews
+    ) {
         List<PatternContribution> contributions = new ArrayList<>();
         double sumValue = 0.0;
         Long primaryPatternId = null;
@@ -63,18 +74,22 @@ public class AcquisitionScorer {
                 primaryPatternId = pattern.getId();
             }
 
-            UserPatternState state = stateMap.get(pattern.getId());
+            UserPatternState state = stateMap != null ? stateMap.get(pattern.getId()) : null;
             double skill = (state != null && state.getSkill() != null) ? state.getSkill() : 0.0;
             int solves = (state != null && state.getIndependentSolves() != null) ? state.getIndependentSolves() : 0;
 
             // Clamped at 0.0 - no negative values!
             double skillGap = Math.max(0.0, targetLevel - skill);
 
-            interviewCtx = interviewRelevanceCalculator.calculate(userId, pattern, planDate);
+            interviewCtx = upcomingInterviews != null
+                    ? interviewRelevanceCalculator.calculateWithInterviews(upcomingInterviews, pattern, planDate)
+                    : interviewRelevanceCalculator.calculate(userId, pattern, planDate);
+
             double relevance = interviewCtx.getRelevanceMultiplier();
 
             double contrib = weight * skillGap * relevance;
             sumValue += contrib;
+
 
             contributions.add(PatternContribution.builder()
                     .patternId(pattern.getId())

@@ -33,9 +33,14 @@ public class InterviewRelevanceCalculator {
 
     public InterviewContext calculate(Long userId, Pattern pattern, LocalDate currentDate) {
         List<Interview> upcoming = interviewRepository.findByUserIdAndOutcome(userId, InterviewOutcome.UPCOMING);
+        return calculateWithInterviews(upcoming, pattern, currentDate);
+    }
 
+    public InterviewContext calculateWithInterviews(List<Interview> upcoming, Pattern pattern, LocalDate currentDate) {
         Interview nearest = null;
+
         long minDays = Long.MAX_VALUE;
+
 
         for (Interview i : upcoming) {
             if (i.getInterviewDate() != null && !i.getInterviewDate().isBefore(currentDate)) {

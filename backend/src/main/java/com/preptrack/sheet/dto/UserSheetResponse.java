@@ -17,5 +17,7 @@ public class UserSheetResponse {
     private String description;
     private long totalProblems;
     private long solvedProblems;
+    private double progressPercent;
     private LocalDateTime selectedAt;
 }
+

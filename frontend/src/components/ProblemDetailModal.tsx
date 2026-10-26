@@ -1,10 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
+import { ProblemDetail } from '../types';
 
-export default function ProblemDetailModal({ problemId, onClose, onSelectProblem }) {
-  const [problem, setProblem] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+interface ProblemDetailModalProps {
+  problemId: string | null;
+  onClose: () => void;
+  onSelectProblem?: (id: string) => void;
+}
+
+export default function ProblemDetailModal({ problemId, onClose, onSelectProblem }: ProblemDetailModalProps) {
+  const [problem, setProblem] = useState<ProblemDetail | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!problemId) return;
@@ -13,7 +20,7 @@ export default function ProblemDetailModal({ problemId, onClose, onSelectProblem
     setLoading(true);
     setError(null);
 
-    api.get(`/problems/${problemId}`)
+    api.get<ProblemDetail>(`/problems/${problemId}`)
       .then((res) => {
         if (isMounted) {
           setProblem(res.data);
@@ -80,8 +87,8 @@ export default function ProblemDetailModal({ problemId, onClose, onSelectProblem
             justifyContent: 'center',
             transition: 'all 0.2s ease'
           }}
-          onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
         >
           &times;
         </button>

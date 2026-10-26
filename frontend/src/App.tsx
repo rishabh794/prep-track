@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
@@ -8,8 +8,13 @@ import SheetsPage from './pages/SheetsPage';
 import ExploreSheetsPage from './pages/ExploreSheetsPage';
 import InterviewsPage from './pages/InterviewsPage';
 import SettingsPage from './pages/SettingsPage';
+import TodayPage from './pages/TodayPage';
 
-function ProtectedRoute({ children }) {
+interface ProtectedRouteProps {
+  children: ReactNode;
+}
+
+function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -24,7 +29,15 @@ function ProtectedRoute({ children }) {
     return <Navigate to="/auth" replace />;
   }
 
-  return children;
+  return <>{children}</>;
+}
+
+function DashboardIndexRoute() {
+  const { user } = useAuth();
+  if (user && user.settings && !user.settings.onboardingComplete) {
+    return <Navigate to="/onboarding" replace />;
+  }
+  return <TodayPage />;
 }
 
 function AppRoutes() {
@@ -35,6 +48,22 @@ function AppRoutes() {
         <Routes>
           <Route
             path="/"
+            element={
+              <ProtectedRoute>
+                <DashboardIndexRoute />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/today"
+            element={
+              <ProtectedRoute>
+                <TodayPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sheets"
             element={
               <ProtectedRoute>
                 <SheetsPage />

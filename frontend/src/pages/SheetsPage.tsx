@@ -2,24 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import ProblemDetailModal from '../components/ProblemDetailModal';
-import { useAuth } from '../context/AuthContext';
+import { UserSheet, ProblemDifficulty } from '../types';
+
+interface SheetProblemItem {
+  id: number;
+  canonicalTitle: string;
+  difficulty: ProblemDifficulty;
+  estimatedMinutes?: number;
+  category?: string;
+  displayOrder?: number;
+  status?: string;
+  patterns?: Array<{ id: number; name: string }>;
+}
 
 export default function SheetsPage() {
-  const { user } = useAuth();
-  const [userSheets, setUserSheets] = useState([]);
-  const [selectedSheetId, setSelectedSheetId] = useState(null);
-  const [problems, setProblems] = useState([]);
-  const [loadingSheets, setLoadingSheets] = useState(true);
-  const [loadingProblems, setLoadingProblems] = useState(false);
-  const [selectedProblemId, setSelectedProblemId] = useState(null);
+  const [userSheets, setUserSheets] = useState<UserSheet[]>([]);
+  const [selectedSheetId, setSelectedSheetId] = useState<number | null>(null);
+  const [problems, setProblems] = useState<SheetProblemItem[]>([]);
+  const [loadingSheets, setLoadingSheets] = useState<boolean>(true);
+  const [loadingProblems, setLoadingProblems] = useState<boolean>(false);
+  const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
 
   // Filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [difficultyFilter, setDifficultyFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('ALL');
 
   useEffect(() => {
     setLoadingSheets(true);
-    api.get('/user/sheets')
+    api.get<UserSheet[]>('/user/sheets')
       .then((res) => {
         setUserSheets(res.data);
         if (res.data.length > 0) {
@@ -34,7 +44,7 @@ export default function SheetsPage() {
     if (!selectedSheetId) return;
 
     setLoadingProblems(true);
-    api.get(`/user/sheets/${selectedSheetId}/problems`)
+    api.get<SheetProblemItem[]>(`/user/sheets/${selectedSheetId}/problems`)
       .then((res) => {
         setProblems(res.data);
       })
@@ -78,8 +88,6 @@ export default function SheetsPage() {
     );
   }
 
-  const currentSheet = userSheets.find((s) => s.sheetId === selectedSheetId);
-
   return (
     <div style={{ maxWidth: '1280px', margin: '30px auto', padding: '0 24px' }}>
       {/* Top Banner with Sheet Tabs */}
@@ -93,7 +101,7 @@ export default function SheetsPage() {
               Multi-sheet deduplicated problems with canonical pattern linkages
             </p>
           </div>
-          <Link to="/onboarding" className="btn btn-secondary btn-sm">
+          <Link to="/settings" className="btn btn-secondary btn-sm">
             ⚙️ Adjust Sheets & Budget
           </Link>
         </div>
@@ -196,9 +204,9 @@ export default function SheetsPage() {
                 cursor: 'pointer',
                 transition: 'all 0.2s ease'
               }}
-              onClick={() => setSelectedProblemId(prob.id)}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(4px)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+              onClick={() => setSelectedProblemId(prob.id.toString())}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateX(4px)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateX(0)')}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
                 <span style={{
@@ -240,7 +248,7 @@ export default function SheetsPage() {
                 className="btn btn-secondary btn-sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelectedProblemId(prob.id);
+                  setSelectedProblemId(prob.id.toString());
                 }}
               >
                 Inspect ➔

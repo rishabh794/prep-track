@@ -3,17 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function AuthPage() {
-  const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [isRegister, setIsRegister] = useState<boolean>(false);
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [displayName, setDisplayName] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -24,13 +24,13 @@ export default function AuthPage() {
         navigate('/onboarding');
       } else {
         const data = await login(email, password);
-        if (data.onboardingComplete) {
-          navigate('/');
+        if (data?.onboardingComplete || data?.user?.settings?.onboardingComplete) {
+          navigate('/today');
         } else {
           navigate('/onboarding');
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       const msg = err.response?.data?.message || err.response?.data?.errors?.email || 'Authentication failed. Please verify your details.';
       setError(msg);
     } finally {

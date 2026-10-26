@@ -1,43 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import { AvailableSheet, UserSheet, Interview } from '../types';
+
+interface DedupSummary {
+  totalProblemsAcrossSheets: number;
+  overlapProblems: number;
+  uniqueProblems: number;
+}
 
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
-  const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('sheets'); // 'sheets' | 'budget' | 'interview'
+  const [activeTab, setActiveTab] = useState<'sheets' | 'budget' | 'interview'>('sheets');
 
   // Sheets state
-  const [availableSheets, setAvailableSheets] = useState([]);
-  const [selectedSheetIds, setSelectedSheetIds] = useState([]);
-  const [dedupSummary, setDedupSummary] = useState(null);
-  const [savingSheets, setSavingSheets] = useState(false);
+  const [availableSheets, setAvailableSheets] = useState<AvailableSheet[]>([]);
+  const [selectedSheetIds, setSelectedSheetIds] = useState<number[]>([]);
+  const [dedupSummary, setDedupSummary] = useState<DedupSummary | null>(null);
+  const [savingSheets, setSavingSheets] = useState<boolean>(false);
 
   // Budget settings state
-  const [dailyTimeBudgetMin, setDailyTimeBudgetMin] = useState(90);
-  const [maxNewProblemsDay, setMaxNewProblemsDay] = useState(3);
-  const [maxRevisionsDay, setMaxRevisionsDay] = useState(10);
-  const [targetSkillLevel, setTargetSkillLevel] = useState(0.8);
-  const [savingBudget, setSavingBudget] = useState(false);
+  const [dailyTimeBudgetMin, setDailyTimeBudgetMin] = useState<number>(90);
+  const [maxNewProblemsDay, setMaxNewProblemsDay] = useState<number>(3);
+  const [maxRevisionsDay, setMaxRevisionsDay] = useState<number>(10);
+  const [targetSkillLevel, setTargetSkillLevel] = useState<number>(0.8);
+  const [savingBudget, setSavingBudget] = useState<boolean>(false);
 
   // Interview state
-  const [upcomingInterviews, setUpcomingInterviews] = useState([]);
-  const [companyName, setCompanyName] = useState('Google');
-  const [role, setRole] = useState('SDE-1');
-  const [interviewDate, setInterviewDate] = useState(() => {
+  const [upcomingInterviews, setUpcomingInterviews] = useState<Interview[]>([]);
+  const [companyName, setCompanyName] = useState<string>('Google');
+  const [role, setRole] = useState<string>('SDE-1');
+  const [interviewDate, setInterviewDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
     return d.toISOString().split('T')[0];
   });
-  const [notes, setNotes] = useState('Focus on Dynamic Programming, Trees, and Graphs');
-  const [savingInterview, setSavingInterview] = useState(false);
+  const [notes, setNotes] = useState<string>('Focus on Dynamic Programming, Trees, and Graphs');
+  const [savingInterview, setSavingInterview] = useState<boolean>(false);
 
   // Status & Feedback
-  const [message, setMessage] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     if (user?.settings) {
@@ -51,14 +57,14 @@ export default function SettingsPage() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      api.get('/sheets/available'),
-      api.get('/user/sheets'),
-      api.get('/interviews/upcoming')
+      api.get<AvailableSheet[]>('/sheets/available'),
+      api.get<UserSheet[]>('/user/sheets'),
+      api.get<Interview[]>('/interviews/upcoming')
     ])
       .then(([availRes, userSheetsRes, interviewsRes]) => {
         setAvailableSheets(availRes.data);
         const userSheetIds = userSheetsRes.data.map((s) => s.sheetId);
-        setSelectedSheetIds(userSheetIds.length > 0 ? userSheetIds : availRes.data.map(s => s.id));
+        setSelectedSheetIds(userSheetIds.length > 0 ? userSheetIds : availRes.data.map((s) => s.id));
         setUpcomingInterviews(interviewsRes.data || []);
       })
       .catch((err) => {
@@ -68,12 +74,12 @@ export default function SettingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const showToast = (text) => {
+  const showToast = (text: string) => {
     setMessage(text);
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const handleToggleSheet = (id) => {
+  const handleToggleSheet = (id: number) => {
     if (selectedSheetIds.includes(id)) {
       if (selectedSheetIds.length === 1) {
         setError('You must keep at least one active target sheet.');
@@ -96,11 +102,11 @@ export default function SettingsPage() {
     setSavingSheets(true);
 
     try {
-      const res = await api.post('/onboarding/sheets', { sheetIds: selectedSheetIds });
+      const res = await api.post<DedupSummary>('/onboarding/sheets', { sheetIds: selectedSheetIds });
       setDedupSummary(res.data);
       showToast('Target sheets and deduplication updated successfully!');
       await refreshUser();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update sheets');
     } finally {
       setSavingSheets(false);
@@ -120,14 +126,14 @@ export default function SettingsPage() {
       });
       await refreshUser();
       showToast('Daily study budget and velocity saved!');
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update study budget');
     } finally {
       setSavingBudget(false);
     }
   };
 
-  const handleSaveInterview = async (e) => {
+  const handleSaveInterview = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSavingInterview(true);
@@ -139,10 +145,10 @@ export default function SettingsPage() {
         interviewDate,
         notes
       });
-      const res = await api.get('/interviews/upcoming');
+      const res = await api.get<Interview[]>('/interviews/upcoming');
       setUpcomingInterviews(res.data || []);
       showToast(`Interview target for ${companyName} saved!`);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save interview target');
     } finally {
       setSavingInterview(false);
@@ -175,8 +181,8 @@ export default function SettingsPage() {
               Adjust your target sheets, daily learning budget, and interview timeline directly without re-running onboarding.
             </p>
           </div>
-          <Link to="/" className="btn btn-secondary btn-sm">
-            ← Back to My Sheets
+          <Link to="/today" className="btn btn-secondary btn-sm">
+            ← Back to Today's Plan
           </Link>
         </div>
       </div>
@@ -616,7 +622,7 @@ export default function SettingsPage() {
                 {upcomingInterviews.map((iv) => {
                   const targetD = new Date(iv.interviewDate);
                   const now = new Date();
-                  const diffDays = Math.ceil((targetD - now) / (1000 * 60 * 60 * 24));
+                  const diffDays = Math.ceil((targetD.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
                   return (
                     <div
