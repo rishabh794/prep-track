@@ -4,11 +4,17 @@ import com.preptrack.ai.dto.ConfirmTopicsRequest;
 import com.preptrack.ai.dto.ExtractedPatternDto;
 import com.preptrack.ai.dto.FeedbackExtractionResult;
 import com.preptrack.ai.service.FeedbackExtractionService;
+import com.preptrack.application.dto.ApplicationRequestDto;
+import com.preptrack.application.dto.ApplicationResponseDto;
+import com.preptrack.application.dto.InterviewRequestDto;
 import com.preptrack.application.dto.InterviewResponseDto;
 import com.preptrack.application.dto.InterviewTopicDto;
+import com.preptrack.application.entity.Application;
+import com.preptrack.application.entity.ApplicationStatus;
 import com.preptrack.application.entity.Interview;
 import com.preptrack.application.entity.InterviewOutcome;
 import com.preptrack.application.entity.InterviewTopic;
+import com.preptrack.application.repository.ApplicationRepository;
 import com.preptrack.application.repository.InterviewRepository;
 import com.preptrack.application.repository.InterviewTopicRepository;
 import com.preptrack.auth.entity.User;
@@ -36,6 +42,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ApplicationService {
 
+    private final ApplicationRepository applicationRepository;
     private final InterviewRepository interviewRepository;
     private final InterviewTopicRepository interviewTopicRepository;
     private final PatternRepository patternRepository;
@@ -90,6 +97,7 @@ public class ApplicationService {
 
         // Store extracted topics as unconfirmed
         interviewTopicRepository.deleteByInterviewId(interviewId);
+        interviewTopicRepository.flush();
         if (result != null && result.getExtractedPatterns() != null) {
             for (ExtractedPatternDto ep : result.getExtractedPatterns()) {
                 if (ep.getPatternId() != null) {
@@ -112,7 +120,9 @@ public class ApplicationService {
         User user = getUserByEmail(email);
         Interview interview = getInterviewOwnedByUser(user.getId(), interviewId);
 
-        boolean wasAlreadyConfirmed = interview.getOutcome() != null && interview.getOutcome() != InterviewOutcome.UPCOMING;
+        boolean wasAlreadyConfirmed = interview.getOutcome() == InterviewOutcome.PASSED
+                || interview.getOutcome() == InterviewOutcome.FAILED
+                || interview.getOutcome() == InterviewOutcome.PARTIAL;
 
         if (request.getOutcome() != null && !request.getOutcome().isBlank()) {
             try {
@@ -125,6 +135,7 @@ public class ApplicationService {
         interviewRepository.save(interview);
 
         interviewTopicRepository.deleteByInterviewId(interviewId);
+        interviewTopicRepository.flush();
 
         List<InterviewTopicDto> topicDtos = new ArrayList<>();
         if (request.getTopics() != null) {
@@ -243,6 +254,160 @@ public class ApplicationService {
                 .rawFeedback(i.getRawFeedback())
                 .aiExtracted(i.getAiExtracted())
                 .topics(topicDtos)
+                .build();
+    }
+
+    // ==================== Application CRUD ====================
+
+    @Transactional
+    public ApplicationResponseDto createApplication(String email, ApplicationRequestDto request) {
+        User user = getUserByEmail(email);
+
+        Application application = Application.builder()
+                .user(user)
+                .companyName(request.getCompanyName())
+                .role(request.getRole() != null ? request.getRole() : "Software Engineer")
+                .status(request.getStatus() != null ? request.getStatus() : ApplicationStatus.APPLIED)
+                .appliedDate(request.getAppliedDate() != null ? request.getAppliedDate() : LocalDate.now())
+                .notes(request.getNotes())
+                .build();
+
+        Application saved = applicationRepository.save(application);
+        return toApplicationDto(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApplicationResponseDto> getApplications(String email) {
+        User user = getUserByEmail(email);
+        List<Application> applications = applicationRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        return applications.stream().map(this::toApplicationDto).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public ApplicationResponseDto getApplication(String email, Long id) {
+        User user = getUserByEmail(email);
+        Application application = applicationRepository.findByIdAndUserId(id, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+        return toApplicationDto(application);
+    }
+
+    @Transactional
+    public ApplicationResponseDto updateApplication(String email, Long id, ApplicationRequestDto request) {
+        User user = getUserByEmail(email);
+        Application application = applicationRepository.findByIdAndUserId(id, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+
+        if (request.getCompanyName() != null && !request.getCompanyName().isBlank()) {
+            application.setCompanyName(request.getCompanyName());
+        }
+        if (request.getRole() != null) {
+            application.setRole(request.getRole());
+        }
+        if (request.getStatus() != null) {
+            application.setStatus(request.getStatus());
+        }
+        if (request.getAppliedDate() != null) {
+            application.setAppliedDate(request.getAppliedDate());
+        }
+        if (request.getNotes() != null) {
+            application.setNotes(request.getNotes());
+        }
+
+        Application updated = applicationRepository.save(application);
+        return toApplicationDto(updated);
+    }
+
+    @Transactional
+    public void deleteApplication(String email, Long id) {
+        User user = getUserByEmail(email);
+        Application application = applicationRepository.findByIdAndUserId(id, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+        applicationRepository.delete(application);
+    }
+
+    // ==================== Interview CRUD ====================
+
+    @Transactional(readOnly = true)
+    public List<InterviewResponseDto> getInterviewsForApplication(String email, Long applicationId) {
+        User user = getUserByEmail(email);
+        applicationRepository.findByIdAndUserId(applicationId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + applicationId));
+
+        List<Interview> interviews = interviewRepository.findByApplicationIdOrderByInterviewDateAsc(applicationId);
+        return toDtos(interviews);
+    }
+
+    @Transactional
+    public InterviewResponseDto createInterviewForApplication(String email, Long applicationId, InterviewRequestDto request) {
+        User user = getUserByEmail(email);
+        Application application = applicationRepository.findByIdAndUserId(applicationId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + applicationId));
+
+        Interview interview = Interview.builder()
+                .application(application)
+                .interviewDate(request.getInterviewDate())
+                .roundName(request.getRoundName() != null ? request.getRoundName() : "Technical Interview")
+                .notes(request.getNotes())
+                .outcome(request.getOutcome() != null ? request.getOutcome() : InterviewOutcome.UPCOMING)
+                .build();
+
+        Interview saved = interviewRepository.save(interview);
+
+        // Update application status to INTERVIEW if currently WISHLIST/APPLIED/OA
+        if (application.getStatus() == ApplicationStatus.WISHLIST ||
+            application.getStatus() == ApplicationStatus.APPLIED ||
+            application.getStatus() == ApplicationStatus.OA) {
+            application.setStatus(ApplicationStatus.INTERVIEW);
+            applicationRepository.save(application);
+        }
+
+        return toDto(saved);
+    }
+
+    @Transactional
+    public InterviewResponseDto updateInterview(String email, Long interviewId, InterviewRequestDto request) {
+        User user = getUserByEmail(email);
+        Interview interview = getInterviewOwnedByUser(user.getId(), interviewId);
+
+        if (request.getInterviewDate() != null) {
+            interview.setInterviewDate(request.getInterviewDate());
+        }
+        if (request.getRoundName() != null) {
+            interview.setRoundName(request.getRoundName());
+        }
+        if (request.getNotes() != null) {
+            interview.setNotes(request.getNotes());
+        }
+        if (request.getOutcome() != null) {
+            interview.setOutcome(request.getOutcome());
+        }
+
+        Interview updated = interviewRepository.save(interview);
+        return toDto(updated);
+    }
+
+    @Transactional
+    public void deleteInterview(String email, Long interviewId) {
+        User user = getUserByEmail(email);
+        Interview interview = getInterviewOwnedByUser(user.getId(), interviewId);
+        interviewRepository.delete(interview);
+    }
+
+    private ApplicationResponseDto toApplicationDto(Application app) {
+        List<InterviewResponseDto> interviewDtos = app.getInterviews() != null
+                ? toDtos(app.getInterviews())
+                : Collections.emptyList();
+
+        return ApplicationResponseDto.builder()
+                .id(app.getId())
+                .companyName(app.getCompanyName())
+                .role(app.getRole())
+                .status(app.getStatus())
+                .appliedDate(app.getAppliedDate())
+                .notes(app.getNotes())
+                .interviews(interviewDtos)
+                .createdAt(app.getCreatedAt())
+                .updatedAt(app.getUpdatedAt())
                 .build();
     }
 }

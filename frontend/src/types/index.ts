@@ -216,6 +216,20 @@ export interface Interview {
   topics?: InterviewTopic[];
 }
 
+export type ApplicationStatus = 'WISHLIST' | 'APPLIED' | 'OA' | 'INTERVIEW' | 'OFFER' | 'REJECTED';
+
+export interface Application {
+  id: number;
+  companyName: string;
+  role?: string;
+  status: ApplicationStatus;
+  appliedDate?: string;
+  notes?: string;
+  interviews?: Interview[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 
 export interface ProblemSource {
   platform: 'LEETCODE' | 'GFG' | string;

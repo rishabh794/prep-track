@@ -19,5 +19,7 @@ public interface InterviewTopicRepository extends JpaRepository<InterviewTopic, 
 
     List<InterviewTopic> findByInterviewId(Long interviewId);
 
-    void deleteByInterviewId(Long interviewId);
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM InterviewTopic it WHERE it.interview.id = :interviewId")
+    void deleteByInterviewId(@Param("interviewId") Long interviewId);
 }

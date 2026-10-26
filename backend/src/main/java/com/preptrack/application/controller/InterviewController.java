@@ -72,4 +72,22 @@ public class InterviewController {
     ) {
         return ResponseEntity.ok(applicationService.getInterviewTopics(userDetails.getUsername(), id));
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<InterviewResponseDto> updateInterview(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id,
+            @Valid @RequestBody com.preptrack.application.dto.InterviewRequestDto request
+    ) {
+        return ResponseEntity.ok(applicationService.updateInterview(userDetails.getUsername(), id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteInterview(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long id
+    ) {
+        applicationService.deleteInterview(userDetails.getUsername(), id);
+        return ResponseEntity.noContent().build();
+    }
 }
