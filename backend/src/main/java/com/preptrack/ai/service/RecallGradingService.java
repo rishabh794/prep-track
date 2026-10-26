@@ -3,7 +3,7 @@ package com.preptrack.ai.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.preptrack.ai.client.AiClientException;
-import com.preptrack.ai.client.OpenAiClient;
+import com.preptrack.ai.client.GeminiClient;
 import com.preptrack.ai.dto.RecallGradingRequest;
 import com.preptrack.ai.dto.RecallGradingResult;
 import com.preptrack.ai.entity.RecallGrade;
@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class RecallGradingService {
 
-    private final OpenAiClient openAiClient;
+    private final GeminiClient geminiClient;
     private final ObjectMapper objectMapper;
 
     private static final String SYSTEM_PROMPT = """
@@ -50,7 +50,7 @@ public class RecallGradingService {
     private static final Pattern TOKEN_SPLIT = Pattern.compile("[^a-zA-Z0-9]+");
 
     public RecallGradingResult grade(RecallGradingRequest request) {
-        if (openAiClient.isAvailable()) {
+        if (geminiClient.isAvailable()) {
             try {
                 String userPrompt = String.format("""
                     Problem: %s
@@ -74,10 +74,10 @@ public class RecallGradingService {
                     request.getUserApproach() != null ? request.getUserApproach() : ""
                 );
 
-                String response = openAiClient.chat(SYSTEM_PROMPT, userPrompt, null);
+                String response = geminiClient.chat(SYSTEM_PROMPT, userPrompt, null);
                 return parseGradingResult(response);
             } catch (AiClientException e) {
-                log.warn("OpenAI recall grading failed, falling back to rule-based evaluation: {}", e.getMessage());
+                log.warn("Gemini recall grading failed, falling back to rule-based evaluation: {}", e.getMessage());
             }
         }
 
@@ -100,7 +100,7 @@ public class RecallGradingService {
                     .reasoning(reasoning)
                     .build();
         } catch (Exception e) {
-            log.warn("Failed to parse OpenAI grading JSON response: {}", json);
+            log.warn("Failed to parse Gemini grading JSON response: {}", json);
             return RecallGradingResult.builder()
                     .grade(RecallGrade.PARTIAL)
                     .reasoning("Recall evaluated; please confirm or override.")

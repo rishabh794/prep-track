@@ -1,7 +1,7 @@
 package com.preptrack.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.preptrack.ai.client.OpenAiClient;
+import com.preptrack.ai.client.GeminiClient;
 import com.preptrack.ai.dto.FeedbackExtractionResult;
 import com.preptrack.pattern.entity.Pattern;
 import com.preptrack.pattern.repository.PatternRepository;
@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 class FeedbackExtractionServiceTest {
 
     @Mock
-    private OpenAiClient openAiClient;
+    private GeminiClient geminiClient;
 
     @Mock
     private PatternRepository patternRepository;
@@ -41,13 +41,13 @@ class FeedbackExtractionServiceTest {
                 Pattern.builder().id(3L).name("BFS Level-Order").slug("bfs-level-order").build()
         );
         when(patternRepository.findAll()).thenReturn(patterns);
-        extractionService = new FeedbackExtractionService(openAiClient, objectMapper, patternRepository);
+        extractionService = new FeedbackExtractionService(geminiClient, objectMapper, patternRepository);
     }
 
     @Test
-    @DisplayName("OpenAI active: extracts patterns with weakness and outcome")
-    void testOpenAiExtraction() {
-        when(openAiClient.isAvailable()).thenReturn(true);
+    @DisplayName("Gemini active: extracts patterns with weakness and outcome")
+    void testGeminiExtraction() {
+        when(geminiClient.isAvailable()).thenReturn(true);
         String mockJson = """
             {
               "extractedPatterns": [
@@ -57,7 +57,7 @@ class FeedbackExtractionServiceTest {
               "requiresConfirmation": true
             }
             """;
-        when(openAiClient.chat(anyString(), anyString(), eq(null))).thenReturn(mockJson);
+        when(geminiClient.chat(anyString(), anyString(), eq(null))).thenReturn(mockJson);
 
         FeedbackExtractionResult result = extractionService.extract("I had a hard time with the subset DP problem.");
 
@@ -70,7 +70,7 @@ class FeedbackExtractionServiceTest {
     @Test
     @DisplayName("Fallback extraction: recognizes keywords, weakness cues, and suggested outcome")
     void testFallbackExtraction() {
-        when(openAiClient.isAvailable()).thenReturn(false);
+        when(geminiClient.isAvailable()).thenReturn(false);
 
         String feedback = "The interviewer asked a Two Pointer problem which went well and passed, but I struggled with DP Memoization.";
         FeedbackExtractionResult result = extractionService.extract(feedback);

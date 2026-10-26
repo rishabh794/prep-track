@@ -73,7 +73,7 @@ public class ApplicationService {
         User user = getUserByEmail(email);
         getInterviewOwnedByUser(user.getId(), interviewId);
 
-        // OpenAI HTTP call happens outside transaction so DB connections are not starved
+        // Gemini AI HTTP call happens outside transaction so DB connections are not starved
         FeedbackExtractionResult result = feedbackExtractionService.extract(rawFeedback);
 
         saveExtractionResult(user.getId(), interviewId, rawFeedback, result);

@@ -3,7 +3,7 @@ package com.preptrack.ai.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.preptrack.ai.client.AiClientException;
-import com.preptrack.ai.client.OpenAiClient;
+import com.preptrack.ai.client.GeminiClient;
 import com.preptrack.ai.dto.ExtractedPatternDto;
 import com.preptrack.ai.dto.FeedbackExtractionResult;
 import com.preptrack.pattern.entity.Pattern;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FeedbackExtractionService {
 
-    private final OpenAiClient openAiClient;
+    private final GeminiClient geminiClient;
     private final ObjectMapper objectMapper;
     private final PatternRepository patternRepository;
 
@@ -45,17 +45,17 @@ public class FeedbackExtractionService {
     public FeedbackExtractionResult extract(String rawFeedback) {
         List<Pattern> allPatterns = patternRepository.findAll();
 
-        if (openAiClient.isAvailable()) {
+        if (geminiClient.isAvailable()) {
             try {
                 String patternListStr = allPatterns.stream()
                         .map(p -> String.format("- %s (slug: %s)", p.getName(), p.getSlug()))
                         .collect(Collectors.joining("\n"));
 
                 String systemPrompt = String.format(SYSTEM_PROMPT_TEMPLATE, patternListStr);
-                String response = openAiClient.chat(systemPrompt, rawFeedback, null);
+                String response = geminiClient.chat(systemPrompt, rawFeedback, null);
                 return parseExtractionResult(response, rawFeedback, allPatterns);
             } catch (AiClientException e) {
-                log.warn("OpenAI interview feedback extraction failed, falling back to rule-based parser: {}", e.getMessage());
+                log.warn("Gemini interview feedback extraction failed, falling back to rule-based parser: {}", e.getMessage());
             }
         }
 
@@ -100,7 +100,7 @@ public class FeedbackExtractionService {
                     .aiUsed(true)
                     .build();
         } catch (Exception e) {
-            log.warn("Failed to parse OpenAI feedback extraction JSON: {}", json);
+            log.warn("Failed to parse Gemini feedback extraction JSON: {}", json);
             return extractFallback(rawFeedback, allPatterns);
         }
     }

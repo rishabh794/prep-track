@@ -1,7 +1,7 @@
 package com.preptrack.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.preptrack.ai.client.OpenAiClient;
+import com.preptrack.ai.client.GeminiClient;
 import com.preptrack.ai.dto.RecallGradingRequest;
 import com.preptrack.ai.dto.RecallGradingResult;
 import com.preptrack.ai.entity.RecallGrade;
@@ -21,21 +21,21 @@ import static org.mockito.Mockito.when;
 class RecallGradingServiceTest {
 
     @Mock
-    private OpenAiClient openAiClient;
+    private GeminiClient geminiClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private RecallGradingService gradingService;
 
     @BeforeEach
     void setUp() {
-        gradingService = new RecallGradingService(openAiClient, objectMapper);
+        gradingService = new RecallGradingService(geminiClient, objectMapper);
     }
 
     @Test
-    @DisplayName("OpenAI active: parses valid PASS response from model")
-    void testOpenAiGradingSuccess() {
-        when(openAiClient.isAvailable()).thenReturn(true);
-        when(openAiClient.chat(anyString(), anyString(), eq(null)))
+    @DisplayName("Gemini active: parses valid PASS response from model")
+    void testGeminiGradingSuccess() {
+        when(geminiClient.isAvailable()).thenReturn(true);
+        when(geminiClient.chat(anyString(), anyString(), eq(null)))
                 .thenReturn("{\"grade\": \"PASS\", \"reasoning\": \"Correctly identified monotonic stack.\"}");
 
         RecallGradingRequest request = RecallGradingRequest.builder()
@@ -52,7 +52,7 @@ class RecallGradingServiceTest {
     @Test
     @DisplayName("Fallback grading: very short or vague input returns FAIL")
     void testFallbackVagueInputReturnsFail() {
-        when(openAiClient.isAvailable()).thenReturn(false);
+        when(geminiClient.isAvailable()).thenReturn(false);
 
         RecallGradingRequest request = RecallGradingRequest.builder()
                 .problemTitle("3Sum")
@@ -67,7 +67,7 @@ class RecallGradingServiceTest {
     @Test
     @DisplayName("Fallback grading: high keyword overlap with reference approach returns PASS")
     void testFallbackHighOverlapReturnsPass() {
-        when(openAiClient.isAvailable()).thenReturn(false);
+        when(geminiClient.isAvailable()).thenReturn(false);
 
         RecallGradingRequest request = RecallGradingRequest.builder()
                 .problemTitle("Trapping Rain Water")
@@ -84,7 +84,7 @@ class RecallGradingServiceTest {
     @Test
     @DisplayName("Fallback grading: partial keyword alignment returns PARTIAL")
     void testFallbackPartialOverlapReturnsPartial() {
-        when(openAiClient.isAvailable()).thenReturn(false);
+        when(geminiClient.isAvailable()).thenReturn(false);
 
         RecallGradingRequest request = RecallGradingRequest.builder()
                 .problemTitle("Binary Search")

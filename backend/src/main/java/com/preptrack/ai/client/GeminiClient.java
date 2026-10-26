@@ -2,7 +2,7 @@ package com.preptrack.ai.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.preptrack.ai.config.OpenAiProperties;
+import com.preptrack.ai.config.GeminiProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -13,15 +13,16 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OpenAiClient {
+public class GeminiClient {
 
-    private final OpenAiProperties properties;
+    private final GeminiProperties properties;
     private final ObjectMapper objectMapper;
     private RestClient restClient;
 
@@ -46,80 +47,92 @@ public class OpenAiClient {
 
     public String chat(String systemPrompt, String userPrompt, String modelOverride) {
         if (!isAvailable()) {
-            throw new AiClientException("OpenAI API key is not configured.");
+            throw new AiClientException("Gemini API key is not configured.");
         }
 
         String model = (modelOverride != null && !modelOverride.isBlank())
                 ? modelOverride
                 : properties.getModel();
 
-        Map<String, Object> requestBody = Map.of(
-                "model", model,
-                "messages", List.of(
-                        Map.of("role", "system", "content", systemPrompt),
-                        Map.of("role", "user", "content", userPrompt)
-                ),
-                "response_format", Map.of("type", "json_object"),
-                "temperature", 0.2,
-                "max_tokens", properties.getMaxTokens()
-        );
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("contents", List.of(
+                Map.of("role", "user", "parts", List.of(Map.of("text", userPrompt)))
+        ));
+
+        if (systemPrompt != null && !systemPrompt.isBlank()) {
+            requestBody.put("systemInstruction", Map.of(
+                    "parts", List.of(Map.of("text", systemPrompt))
+            ));
+        }
+
+        requestBody.put("generationConfig", Map.of(
+                "responseMimeType", "application/json",
+                "temperature", properties.getTemperature(),
+                "maxOutputTokens", properties.getMaxTokens()
+        ));
 
         int maxRetries = 2;
         long backoffMs = 500;
 
         for (int attempt = 0; attempt <= maxRetries; attempt++) {
             try {
+                String uri = "/models/" + model + ":generateContent";
+
                 String responseStr = getRestClient().post()
-                        .uri("/chat/completions")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + properties.getApiKey())
+                        .uri(uri)
+                        .header("x-goog-api-key", properties.getApiKey())
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(requestBody)
                         .retrieve()
                         .body(String.class);
 
                 JsonNode root = objectMapper.readTree(responseStr);
-                JsonNode choices = root.path("choices");
-                if (choices.isArray() && !choices.isEmpty()) {
-                    return choices.get(0).path("message").path("content").asText();
+                JsonNode candidates = root.path("candidates");
+                if (candidates.isArray() && !candidates.isEmpty()) {
+                    JsonNode parts = candidates.get(0).path("content").path("parts");
+                    if (parts.isArray() && !parts.isEmpty()) {
+                        String text = parts.get(0).path("text").asText();
+                        return sanitizeJson(text);
+                    }
                 }
-                throw new AiClientException("Invalid response structure from OpenAI: " + responseStr);
+                throw new AiClientException("Invalid response structure from Gemini: " + responseStr);
             } catch (RestClientResponseException ex) {
                 if (attempt < maxRetries && isRetryable(ex)) {
-                    log.warn("OpenAI returned retryable HTTP {} on attempt {}. Retrying in {}ms...",
+                    log.warn("Gemini returned retryable HTTP {} on attempt {}. Retrying in {}ms...",
                             ex.getStatusCode(), attempt + 1, backoffMs * (attempt + 1));
                     try {
                         Thread.sleep(backoffMs * (attempt + 1));
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
-                        throw new AiClientException("Interrupted during OpenAI retry backoff", ie);
+                        throw new AiClientException("Interrupted during Gemini retry backoff", ie);
                     }
                     continue;
                 }
-                log.warn("OpenAI request failed with HTTP {}: {}", ex.getStatusCode(), ex.getResponseBodyAsString());
-                throw new AiClientException("OpenAI request failed: " + ex.getStatusCode() + " " + ex.getResponseBodyAsString(), ex);
+                log.warn("Gemini request failed with HTTP {}: {}", ex.getStatusCode(), ex.getResponseBodyAsString());
+                throw new AiClientException("Gemini request failed: " + ex.getStatusCode() + " " + ex.getResponseBodyAsString(), ex);
             } catch (ResourceAccessException ex) {
                 if (attempt < maxRetries) {
-                    log.warn("OpenAI network/timeout error on attempt {}. Retrying in {}ms...",
+                    log.warn("Gemini network/timeout error on attempt {}. Retrying in {}ms...",
                             attempt + 1, backoffMs * (attempt + 1));
                     try {
                         Thread.sleep(backoffMs * (attempt + 1));
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
-                        throw new AiClientException("Interrupted during OpenAI retry backoff", ie);
+                        throw new AiClientException("Interrupted during Gemini retry backoff", ie);
                     }
                     continue;
                 }
-                log.warn("OpenAI network error after retries: {}", ex.getMessage());
-                throw new AiClientException("OpenAI network error: " + ex.getMessage(), ex);
+                log.warn("Gemini network error after retries: {}", ex.getMessage());
+                throw new AiClientException("Gemini network error: " + ex.getMessage(), ex);
             } catch (AiClientException e) {
                 throw e;
             } catch (Exception e) {
-                log.warn("OpenAI chat completion failed: {}", e.getMessage());
-                throw new AiClientException("OpenAI request failed: " + e.getMessage(), e);
+                log.warn("Gemini generateContent call failed: {}", e.getMessage());
+                throw new AiClientException("Gemini request failed: " + e.getMessage(), e);
             }
         }
 
-        throw new AiClientException("OpenAI request failed after retries.");
+        throw new AiClientException("Gemini request failed after retries.");
     }
 
     private boolean isRetryable(RestClientResponseException ex) {
@@ -127,9 +140,22 @@ public class OpenAiClient {
             return true;
         }
         if (ex.getStatusCode().value() == 429) {
-            String body = ex.getResponseBodyAsString();
-            return body == null || !body.contains("insufficient_quota");
+            return true;
         }
         return false;
+    }
+
+    private String sanitizeJson(String raw) {
+        if (raw == null) return "{}";
+        String trimmed = raw.trim();
+        if (trimmed.startsWith("```json")) {
+            trimmed = trimmed.substring(7);
+        } else if (trimmed.startsWith("```")) {
+            trimmed = trimmed.substring(3);
+        }
+        if (trimmed.endsWith("```")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 3);
+        }
+        return trimmed.trim();
     }
 }
