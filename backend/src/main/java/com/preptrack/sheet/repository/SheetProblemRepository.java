@@ -21,4 +21,7 @@ public interface SheetProblemRepository extends JpaRepository<SheetProblem, Long
     long countBySheetId(Long sheetId);
 
     boolean existsBySheetIdAndProblemId(Long sheetId, Long problemId);
+
+    @Query("SELECT sp.sheet.name FROM SheetProblem sp WHERE sp.problem.id = :problemId")
+    List<String> findSheetNamesByProblemId(@Param("problemId") Long problemId);
 }

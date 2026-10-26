@@ -82,9 +82,9 @@ class OnboardingIntegrationTest {
                         .content(objectMapper.writeValueAsString(sheetReq)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.selectedSheets", hasItems("Blind 75", "NeetCode 150")))
-                .andExpect(jsonPath("$.totalProblemsAcrossSheets", is(65)))
-                .andExpect(jsonPath("$.uniqueProblems", is(36)))
-                .andExpect(jsonPath("$.overlapProblems", is(29)));
+                .andExpect(jsonPath("$.totalProblemsAcrossSheets", is(192)))
+                .andExpect(jsonPath("$.uniqueProblems", is(117)))
+                .andExpect(jsonPath("$.overlapProblems", is(75)));
 
         // Step 2: Update Settings
         UpdateSettingsRequest settingsReq = UpdateSettingsRequest.builder()
@@ -146,7 +146,7 @@ class OnboardingIntegrationTest {
         mockMvc.perform(get("/api/user/sheets/" + blind75Id + "/problems")
                         .header("Authorization", "Bearer " + authToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(29)))
+                .andExpect(jsonPath("$", hasSize(75)))
                 .andExpect(jsonPath("$[0].canonicalTitle").isString())
                 .andExpect(jsonPath("$[0].status", is("NOT_STARTED")))
                 .andExpect(jsonPath("$[0].patterns").isArray());
