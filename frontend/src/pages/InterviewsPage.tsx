@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 import { Interview } from '../types';
 
@@ -131,6 +132,16 @@ export default function InterviewsPage() {
                     {item.notes}
                   </div>
                 )}
+
+                <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
+                  <Link
+                    to={`/forecast/${item.id}`}
+                    className="btn btn-primary btn-sm"
+                    style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <span>📊</span> View Readiness Forecast ➔
+                  </Link>
+                </div>
               </div>
             );
           })}

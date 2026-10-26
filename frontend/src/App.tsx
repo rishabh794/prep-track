@@ -9,6 +9,7 @@ import ExploreSheetsPage from './pages/ExploreSheetsPage';
 import InterviewsPage from './pages/InterviewsPage';
 import SettingsPage from './pages/SettingsPage';
 import TodayPage from './pages/TodayPage';
+import { ForecastPage } from './pages/ForecastPage';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -93,6 +94,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute>
                 <InterviewsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/forecast/:interviewId"
+            element={
+              <ProtectedRoute>
+                <ForecastPage />
               </ProtectedRoute>
             }
           />

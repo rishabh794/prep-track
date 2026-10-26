@@ -205,3 +205,24 @@ export interface ProblemDetail {
   relations?: ProblemRelation[];
 }
 
+export type TriageStatus = 'ON_TRACK' | 'IMPROVING' | 'AT_RISK' | 'CONSIDER_DROPPING';
+
+export interface PatternProjection {
+  pattern: string;
+  currentSkill: number;
+  projectedSkill: number;
+  currentRetention: number;
+  projectedRetention: number;
+  status: TriageStatus;
+}
+
+export interface ReadinessForecast {
+  interviewId: number;
+  interviewDate: string;
+  companyName: string;
+  daysRemaining: number;
+  overallReadiness: number;
+  patternProjections: PatternProjection[];
+  recommendations: string[];
+}
+
