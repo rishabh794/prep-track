@@ -88,6 +88,47 @@ public class PatternStateService {
         return updates;
     }
 
+    @Transactional
+    public List<PatternUpdateDto> updatePatternStatesOnRecallGrade(User user, Problem problem, com.preptrack.ai.entity.RecallGrade grade) {
+        List<ProblemPattern> problemPatterns = problemPatternRepository.findByProblemIdWithPattern(problem.getId());
+        List<PatternUpdateDto> updates = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (ProblemPattern pp : problemPatterns) {
+            Pattern pattern = pp.getPattern();
+            double linkWeight = pp.getWeight() != null ? pp.getWeight() : 1.0;
+
+            UserPatternState state = getOrCreatePatternState(user, pattern);
+            double skillBefore = state.getSkill() != null ? state.getSkill() : 0.0;
+            double stability = state.getStability() != null ? state.getStability() : 1.0;
+
+            if (grade == com.preptrack.ai.entity.RecallGrade.PASS) {
+                state.setStability(Math.min(365.0, stability * 1.5));
+                state.setIndependentSolves((state.getIndependentSolves() != null ? state.getIndependentSolves() : 0) + 1);
+            } else if (grade == com.preptrack.ai.entity.RecallGrade.PARTIAL) {
+                state.setSkill(Math.min(1.0, skillBefore + 0.03 * linkWeight));
+            } else if (grade == com.preptrack.ai.entity.RecallGrade.FAIL) {
+                state.setSkill(Math.max(0.0, skillBefore - 0.02 * linkWeight));
+                state.setStability(Math.max(1.0, stability * 0.5));
+            }
+
+            state.setLastPracticedAt(now);
+            state.setTotalAttempts((state.getTotalAttempts() != null ? state.getTotalAttempts() : 0) + 1);
+
+            UserPatternState saved = userPatternStateRepository.save(state);
+
+            updates.add(PatternUpdateDto.builder()
+                    .patternId(pattern.getId())
+                    .patternName(pattern.getName())
+                    .skillBefore(Math.round(skillBefore * 100.0) / 100.0)
+                    .skillAfter(Math.round(saved.getSkill() * 100.0) / 100.0)
+                    .retentionNow(1.0)
+                    .build());
+        }
+
+        return updates;
+    }
+
     @Transactional(readOnly = true)
     public List<UserPatternState> getUserPatternStates(Long userId) {
         return userPatternStateRepository.findByUserIdWithPattern(userId);

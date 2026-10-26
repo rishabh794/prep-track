@@ -1,6 +1,6 @@
 package com.preptrack.revision.controller;
 
-import com.preptrack.attempt.entity.AttemptOutcome;
+import com.preptrack.ai.dto.RecallCheckResponseDto;
 import com.preptrack.auth.entity.User;
 import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.common.exception.ResourceNotFoundException;
@@ -36,16 +36,53 @@ public class RevisionController {
         return ResponseEntity.ok(due);
     }
 
-    @PostMapping("/{cardId}/review")
-    public ResponseEntity<RevisionCardDto> reviewRevision(
+    @PostMapping("/{cardId}/recall")
+    public ResponseEntity<RecallCheckResponseDto> submitRecall(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long cardId,
             @RequestBody Map<String, String> body
     ) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
-        AttemptOutcome outcome = AttemptOutcome.valueOf(body.get("outcome"));
-        RevisionCardDto updated = revisionService.reviewRevision(user.getId(), cardId, outcome);
+        String userApproach = body.get("userApproach");
+        RecallCheckResponseDto response = revisionService.submitRecallCheck(user.getId(), cardId, userApproach);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{cardId}/review")
+    public ResponseEntity<RevisionCardDto> reviewRevision(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long cardId,
+            @RequestBody Map<String, Object> body
+    ) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
+        RevisionCardDto updated = revisionService.reviewRevisionWithRecall(user.getId(), cardId, body);
+        return ResponseEntity.ok(updated);
+    }
+
+    @PostMapping("/problem/{problemId}/recall")
+    public ResponseEntity<RecallCheckResponseDto> submitRecallByProblem(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long problemId,
+            @RequestBody Map<String, String> body
+    ) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
+        String userApproach = body.get("userApproach");
+        RecallCheckResponseDto response = revisionService.submitRecallCheckByProblemId(user.getId(), problemId, userApproach);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/problem/{problemId}/review")
+    public ResponseEntity<RevisionCardDto> reviewRevisionByProblem(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long problemId,
+            @RequestBody Map<String, Object> body
+    ) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userDetails.getUsername()));
+        RevisionCardDto updated = revisionService.reviewRevisionByProblemIdWithRecall(user.getId(), problemId, body);
         return ResponseEntity.ok(updated);
     }
 }
