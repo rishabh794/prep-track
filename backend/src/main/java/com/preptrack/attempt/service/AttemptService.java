@@ -13,8 +13,8 @@ import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.common.exception.ResourceNotFoundException;
 import com.preptrack.pattern.dto.PatternUpdateDto;
 import com.preptrack.pattern.service.PatternStateService;
-// import com.preptrack.planner.entity.DailyPlanItem;
-// import com.preptrack.planner.repository.DailyPlanItemRepository;
+import com.preptrack.planner.entity.DailyPlanItem;
+import com.preptrack.planner.repository.DailyPlanItemRepository;
 import com.preptrack.problem.entity.Problem;
 import com.preptrack.problem.repository.ProblemRepository;
 import com.preptrack.revision.dto.RevisionScheduledDto;
@@ -44,7 +44,7 @@ public class AttemptService {
     private final RevisionService revisionService;
     private final FollowUpAssigner followUpAssigner;
     private final SheetProblemRepository sheetProblemRepository;
-    // private final DailyPlanItemRepository dailyPlanItemRepository;
+    private final DailyPlanItemRepository dailyPlanItemRepository;
 
     @Transactional
     public AttemptResponseDto recordAttempt(String userEmail, CreateAttemptRequest request) {
@@ -124,9 +124,8 @@ public class AttemptService {
                 user, problem, request.getOutcome(), followUpType
         );
 
-        // 5. Plan item completion (integrated in planner engine)
+        // 5. If this problem is in today's daily plan, mark it complete!
         boolean planItemCompleted = false;
-        /*
         Optional<DailyPlanItem> planItemOpt = dailyPlanItemRepository.findItemForToday(
                 user.getId(), LocalDate.now(), problem.getId()
         );
@@ -138,7 +137,6 @@ public class AttemptService {
             dailyPlanItemRepository.save(planItem);
             planItemCompleted = true;
         }
-        */
 
         // 6. Find sheets affected
         List<String> sheetsAffected = sheetProblemRepository.findSheetNamesByProblemId(problem.getId());
