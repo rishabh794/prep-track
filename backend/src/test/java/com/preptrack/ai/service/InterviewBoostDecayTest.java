@@ -26,7 +26,7 @@ class InterviewBoostDecayTest {
     @Test
     @DisplayName("Interview boost decays linearly over 14 days and drops to 0 afterwards")
     void testInterviewBoostDecay() {
-        InterviewRelevanceCalculator calculator = new InterviewRelevanceCalculator(interviewRepository, mock(CompanyProfileService.class), new EngineProperties());
+        InterviewRelevanceCalculator calculator = new InterviewRelevanceCalculator(interviewRepository, mock(CompanyProfileService.class), new EngineProperties(), mock(com.preptrack.common.service.TimeService.class));
 
         LocalDate today = LocalDate.of(2026, 11, 15);
 

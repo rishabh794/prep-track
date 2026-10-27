@@ -105,6 +105,7 @@ public class AuthService {
                     .maxRevisionsDay(settings.getMaxRevisionsDay())
                     .targetSkillLevel(settings.getTargetSkillLevel())
                     .onboardingComplete(settings.getOnboardingComplete())
+                    .timezone(settings.getTimezone())
                     .build();
         }
 

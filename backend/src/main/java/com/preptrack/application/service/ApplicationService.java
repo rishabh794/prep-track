@@ -3,7 +3,6 @@ package com.preptrack.application.service;
 import com.preptrack.config.EngineProperties;
 
 import com.preptrack.ai.dto.ConfirmTopicsRequest;
-import com.preptrack.ai.dto.ExtractedPatternDto;
 import com.preptrack.ai.dto.FeedbackExtractionResult;
 import com.preptrack.ai.service.FeedbackExtractionService;
 import com.preptrack.application.dto.ApplicationRequestDto;
@@ -23,6 +22,7 @@ import com.preptrack.auth.entity.User;
 import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.common.exception.BadRequestException;
 import com.preptrack.common.exception.ResourceNotFoundException;
+import com.preptrack.common.service.TimeService;
 import com.preptrack.pattern.entity.Pattern;
 import com.preptrack.pattern.entity.UserPatternState;
 import com.preptrack.pattern.repository.PatternRepository;
@@ -34,8 +34,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -54,6 +52,8 @@ public class ApplicationService {
     private final PatternStateService patternStateService;
     private final UserPatternStateRepository userPatternStateRepository;
     private final InterviewRelevanceCalculator interviewRelevanceCalculator;
+    private final InterviewFeedbackPersistence feedbackPersistence;
+    private final TimeService timeService;
 
     @Transactional(readOnly = true)
     public List<InterviewResponseDto> getUpcomingInterviews(String email) {
@@ -79,63 +79,49 @@ public class ApplicationService {
         return toDtos(interviews);
     }
 
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public FeedbackExtractionResult submitFeedback(String email, Long interviewId, String rawFeedback) {
-        User user = getUserByEmail(email);
-        getInterviewOwnedByUser(user.getId(), interviewId);
+        Long userId = feedbackPersistence.requireOwner(email, interviewId);
 
         // Gemini AI HTTP call happens outside transaction so DB connections are not starved
         FeedbackExtractionResult result = feedbackExtractionService.extract(rawFeedback);
 
-        saveExtractionResult(user.getId(), interviewId, rawFeedback, result);
+        feedbackPersistence.save(userId, interviewId, rawFeedback, result);
 
         return result;
     }
 
     @Transactional
-    public void saveExtractionResult(Long userId, Long interviewId, String rawFeedback, FeedbackExtractionResult result) {
-        Interview interview = getInterviewOwnedByUser(userId, interviewId);
-        interview.setRawFeedback(rawFeedback);
-        interview.setAiExtracted(result != null && result.isAiUsed());
-        interviewRepository.save(interview);
-
-        // Store extracted topics as unconfirmed
-        interviewTopicRepository.deleteByInterviewId(interviewId);
-        interviewTopicRepository.flush();
-        if (result != null && result.getExtractedPatterns() != null) {
-            for (ExtractedPatternDto ep : result.getExtractedPatterns()) {
-                if (ep.getPatternId() != null) {
-                    patternRepository.findById(ep.getPatternId()).ifPresent(p -> {
-                        InterviewTopic topic = InterviewTopic.builder()
-                                .interview(interview)
-                                .pattern(p)
-                                .wasWeak(ep.isWasWeak())
-                                .confirmed(false)
-                                .build();
-                        interviewTopicRepository.save(topic);
-                    });
-                }
-            }
-        }
-    }
-
-    @Transactional
     public InterviewResponseDto confirmTopics(String email, Long interviewId, ConfirmTopicsRequest request) {
         User user = getUserByEmail(email);
-        Interview interview = getInterviewOwnedByUser(user.getId(), interviewId);
+        // Serialize confirmations for this user, including contributions to shared pattern state.
+        userRepository.findByIdForUpdate(user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + user.getId()));
+        Interview interview = interviewRepository.findOwnedByIdForUpdate(user.getId(), interviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("Interview not found: " + interviewId));
 
-        boolean wasAlreadyConfirmed = interview.getOutcome() == InterviewOutcome.PASSED
-                || interview.getOutcome() == InterviewOutcome.FAILED
-                || interview.getOutcome() == InterviewOutcome.PARTIAL;
+        boolean wasAlreadyConfirmed = interview.getTopicsConfirmedAt() != null;
+        if (request == null || request.getTopics() == null) throw new BadRequestException("Topics are required");
+        Set<Long> topicIds = new HashSet<>();
+        for (ConfirmTopicsRequest.ConfirmedTopicDto topic : request.getTopics()) {
+            if (topic == null || topic.getPatternId() == null || topic.getPatternId() <= 0)
+                throw new BadRequestException("A positive pattern ID is required for every topic");
+            if (!topicIds.add(topic.getPatternId())) throw new BadRequestException("Duplicate pattern topic: " + topic.getPatternId());
+        }
 
         if (request.getOutcome() != null && !request.getOutcome().isBlank()) {
             try {
-                interview.setOutcome(InterviewOutcome.valueOf(request.getOutcome().toUpperCase()));
+                InterviewOutcome outcome = InterviewOutcome.valueOf(request.getOutcome().toUpperCase(Locale.ROOT));
+                if (outcome != InterviewOutcome.PASSED && outcome != InterviewOutcome.FAILED && outcome != InterviewOutcome.PARTIAL)
+                    throw new BadRequestException("Confirmed outcome must be PASSED, FAILED, or PARTIAL");
+                interview.setOutcome(outcome);
             } catch (IllegalArgumentException e) {
                 throw new BadRequestException("Invalid interview outcome value: " + request.getOutcome());
             }
         }
         interview.setAiExtracted(true);
-        interviewRepository.save(interview);
+        if (!wasAlreadyConfirmed) interview.setTopicsConfirmedAt(timeService.now());
+        interviewRepository.saveAndFlush(interview);
 
         interviewTopicRepository.deleteByInterviewId(interviewId);
         interviewTopicRepository.flush();
@@ -169,10 +155,10 @@ public class ApplicationService {
                 // decay existing boost first, then add +0.3 and cap total boost at 0.6
                 if (wasWeak && !wasAlreadyConfirmed) {
                     UserPatternState state = patternStateService.getOrCreatePatternState(user, pattern);
-                    double decayedBoost = interviewRelevanceCalculator.getEffectiveInterviewBoost(state, LocalDate.now());
+                    double decayedBoost = interviewRelevanceCalculator.getEffectiveInterviewBoost(state, timeService.getLocalDate(user.getId()));
                     double newBoost = Math.min(policy.getMaxInterviewBoost(), decayedBoost + policy.getTopicConfirmedBoost());
                     state.setInterviewBoost(newBoost);
-                    state.setInterviewBoostSetAt(LocalDateTime.now());
+                    state.setInterviewBoostSetAt(timeService.now());
                     userPatternStateRepository.save(state);
                     log.info("Applied capped interview boost ({}) to pattern {} for user {}", newBoost, pattern.getName(), user.getId());
                 }
@@ -207,13 +193,8 @@ public class ApplicationService {
     }
 
     private Interview getInterviewOwnedByUser(Long userId, Long interviewId) {
-        Interview interview = interviewRepository.findById(interviewId)
+        return interviewRepository.findOwnedById(userId, interviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Interview not found: " + interviewId));
-        if (interview.getApplication() == null || interview.getApplication().getUser() == null ||
-                !interview.getApplication().getUser().getId().equals(userId)) {
-            throw new ResourceNotFoundException("Interview does not belong to user: " + interviewId);
-        }
-        return interview;
     }
 
     private List<InterviewResponseDto> toDtos(List<Interview> interviews) {
@@ -256,6 +237,7 @@ public class ApplicationService {
                 .notes(i.getNotes() != null ? i.getNotes() : i.getRawFeedback())
                 .rawFeedback(i.getRawFeedback())
                 .aiExtracted(i.getAiExtracted())
+                .topicsConfirmedAt(i.getTopicsConfirmedAt())
                 .topics(topicDtos)
                 .build();
     }
@@ -271,7 +253,7 @@ public class ApplicationService {
                 .companyName(request.getCompanyName())
                 .role(request.getRole() != null ? request.getRole() : "Software Engineer")
                 .status(request.getStatus() != null ? request.getStatus() : ApplicationStatus.APPLIED)
-                .appliedDate(request.getAppliedDate() != null ? request.getAppliedDate() : LocalDate.now())
+                .appliedDate(request.getAppliedDate() != null ? request.getAppliedDate() : timeService.getLocalDate(user.getId()))
                 .notes(request.getNotes())
                 .build();
 

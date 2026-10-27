@@ -59,7 +59,7 @@ public class InterviewController {
     public ResponseEntity<InterviewResponseDto> confirmTopics(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id,
-            @RequestBody ConfirmTopicsRequest request
+            @Valid @RequestBody ConfirmTopicsRequest request
     ) {
         InterviewResponseDto response = applicationService.confirmTopics(userDetails.getUsername(), id, request);
         return ResponseEntity.ok(response);

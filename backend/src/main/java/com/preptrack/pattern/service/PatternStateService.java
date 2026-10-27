@@ -3,6 +3,7 @@ package com.preptrack.pattern.service;
 import com.preptrack.attempt.entity.AttemptOutcome;
 import com.preptrack.auth.entity.User;
 import com.preptrack.config.EngineProperties;
+import com.preptrack.common.service.TimeService;
 import com.preptrack.pattern.dto.PatternUpdateDto;
 import com.preptrack.pattern.entity.Pattern;
 import com.preptrack.pattern.entity.ProblemPattern;
@@ -35,6 +36,7 @@ public class PatternStateService {
     private final PatternRepository patternRepository;
     private final RetentionCalculator retentionCalculator;
     private final EngineProperties policy;
+    private final TimeService timeService;
 
     @Transactional
     public UserPatternState getOrCreatePatternState(User user, Pattern pattern) {
@@ -58,7 +60,7 @@ public class PatternStateService {
     public List<PatternUpdateDto> updatePatternStatesOnAttempt(User user, Problem problem, AttemptOutcome outcome) {
         List<ProblemPattern> problemPatterns = problemPatternRepository.findByProblemIdWithPattern(problem.getId());
         List<PatternUpdateDto> updates = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = timeService.now();
 
         for (ProblemPattern pp : problemPatterns) {
             Pattern pattern = pp.getPattern();
@@ -86,7 +88,7 @@ public class PatternStateService {
     public List<PatternUpdateDto> updatePatternStatesOnRecallGrade(User user, Problem problem, com.preptrack.ai.entity.RecallGrade grade) {
         List<ProblemPattern> problemPatterns = problemPatternRepository.findByProblemIdWithPattern(problem.getId());
         List<PatternUpdateDto> updates = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = timeService.now();
 
         for (ProblemPattern pp : problemPatterns) {
             Pattern pattern = pp.getPattern();
@@ -131,7 +133,9 @@ public class PatternStateService {
             UserPatternState state = stateMap.get(p.getId());
             double skill = state != null && state.getSkill() != null ? state.getSkill() : 0.0;
             double stability = state != null && state.getStability() != null ? state.getStability() : policy.getInitialStability();
-            double retention = retentionCalculator.compute(state != null ? state.getLastPracticedAt() : null, stability);
+            var practiced = state != null && state.getLastPracticedAt() != null
+                    ? timeService.getPracticeDate(state.getLastPracticedAt(), userId).atStartOfDay() : null;
+            double retention = retentionCalculator.compute(practiced, stability, timeService.getLocalDate(userId).atStartOfDay());
 
             return PatternStateResponseDto.builder()
                     .patternId(p.getId())

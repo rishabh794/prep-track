@@ -5,6 +5,7 @@ import com.preptrack.auth.entity.User;
 import com.preptrack.config.EngineProperties;
 import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.common.exception.ResourceNotFoundException;
+import com.preptrack.common.service.TimeService;
 import com.preptrack.auth.entity.UserSettings;
 import com.preptrack.auth.repository.UserSettingsRepository;
 import com.preptrack.pattern.repository.ProblemPatternRepository;
@@ -69,6 +70,9 @@ class PlannerServiceTest {
     @Mock
     private ReasonFormatter reasonFormatter;
 
+    @Mock
+    private TimeService timeService;
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -80,6 +84,7 @@ class PlannerServiceTest {
 
     @BeforeEach
     void setup() {
+        lenient().when(timeService.getLocalDate(1L)).thenReturn(LocalDate.now());
         user = User.builder().id(1L).email("user@example.com").build();
         settings = UserSettings.builder()
                 .dailyTimeBudgetMin(90)
@@ -200,5 +205,40 @@ class PlannerServiceTest {
         assertThat(existing.getItems().get(1).getSkipped()).isTrue();
         assertThat(existing.getItems().get(2).getProblem().getId()).isEqualTo(104L);
         assertThat(existing.getItems().get(2).getCompleted()).isFalse();
+        assertThat(response.getTotalEstimatedMinutes()).isEqualTo(60);
+        assertThat(response.getCompletedMinutes()).isEqualTo(30);
+        assertThat(response.getRemainingEstimatedMinutes()).isEqualTo(30);
+        assertThat(response.getSkippedMinutes()).isEqualTo(20);
+        assertThat(response.getSkippedCount()).isEqualTo(1);
+    }
+
+    @Test
+    void regeneratedBudgetIsUpdatedEvenWhenNoStudySlotsRemain() {
+        LocalDate today = LocalDate.now();
+        settings.setDailyTimeBudgetMin(60);
+        settings.setMaxNewProblemsDay(0);
+        settings.setMaxRevisionsDay(0);
+        DailyPlan existing = DailyPlan.builder().id(50L).user(user).planDate(today).budgetMinutes(120)
+                .items(new ArrayList<>()).build();
+        when(dailyPlanRepository.findByUserIdAndPlanDateWithItems(1L, today)).thenReturn(Optional.of(existing));
+        when(userSettingsRepository.findByUserId(1L)).thenReturn(Optional.of(settings));
+        when(dailyPlanRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        DailyPlanResponse response = plannerService.regeneratePlan(1L, today);
+
+        assertThat(response.getDailyBudgetMinutes()).isEqualTo(60);
+        assertThat(response.getTotalEstimatedMinutes()).isZero();
+        verify(candidateCollector, never()).collectCandidates(any(), anyDouble(), any());
+    }
+
+    @Test
+    void completedPlanItemsCannotBeSkipped() {
+        DailyPlanItem item = DailyPlanItem.builder().id(7L).completed(true).skipped(false).build();
+        when(dailyPlanItemRepository.findByIdAndUserId(7L, 1L)).thenReturn(Optional.of(item));
+
+        assertThatThrownBy(() -> plannerService.skipPlanItem(1L, 7L, "Done already"))
+                .isInstanceOf(com.preptrack.common.exception.BadRequestException.class);
+        assertThat(item.getSkipped()).isFalse();
+        verify(dailyPlanItemRepository, never()).save(any());
     }
 }

@@ -145,7 +145,7 @@ public class ForecastService {
             double curStability = state != null && state.getStability() != null ? state.getStability() : engine.getInitialStability();
             Integer daysSincePractice = null;
             if (state != null && state.getLastPracticedAt() != null) {
-                daysSincePractice = (int) ChronoUnit.DAYS.between(state.getLastPracticedAt().toLocalDate(), today);
+                daysSincePractice = (int) ChronoUnit.DAYS.between(timeService.getPracticeDate(state.getLastPracticedAt(), settings), today);
                 if (daysSincePractice < 0) daysSincePractice = 0;
             }
 

@@ -31,6 +31,9 @@ public class ValueBreakdown {
     private Double diversityPenalty = 1.0;
 
     @Builder.Default
+    private Double overdueBonus = 1.0;
+
+    @Builder.Default
     private Double totalValue = 0.0;
 
     public PatternContribution getTopContributor() {

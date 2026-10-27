@@ -1,20 +1,23 @@
 package com.preptrack.revision.service;
 
 import com.preptrack.ai.dto.RecallCheckResponseDto;
-import com.preptrack.ai.dto.RecallGradingRequest;
 import com.preptrack.ai.dto.RecallGradingResult;
 import com.preptrack.ai.entity.RecallCheck;
 import com.preptrack.ai.entity.RecallGrade;
 import com.preptrack.ai.repository.RecallCheckRepository;
 import com.preptrack.ai.service.RecallGradingService;
 import com.preptrack.attempt.entity.AttemptOutcome;
+import com.preptrack.attempt.entity.FailureReason;
 import com.preptrack.attempt.entity.ProblemStatus;
 import com.preptrack.attempt.entity.UserProblemStatus;
 import com.preptrack.attempt.repository.UserProblemStatusRepository;
+import com.preptrack.attempt.service.AttemptHistoryService;
+import com.preptrack.attempt.service.FollowUpAssigner;
 import com.preptrack.auth.entity.User;
 import com.preptrack.config.EngineProperties;
 import com.preptrack.common.exception.BadRequestException;
 import com.preptrack.common.exception.ResourceNotFoundException;
+import com.preptrack.common.service.TimeService;
 import com.preptrack.pattern.entity.ProblemPattern;
 import com.preptrack.pattern.repository.ProblemPatternRepository;
 import com.preptrack.pattern.service.PatternStateService;
@@ -31,13 +34,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -57,10 +59,14 @@ public class RevisionService {
     private final com.preptrack.pattern.repository.UserPatternStateRepository userPatternStateRepository;
     private final EngineProperties policy;
     private final RevisionSchedulingPolicy schedulingPolicy;
+    private final RecallCheckTransactions recallTransactions;
+    private final AttemptHistoryService attemptHistoryService;
+    private final FollowUpAssigner followUpAssigner;
+    private final TimeService timeService;
 
     @Transactional
     public RevisionScheduledDto scheduleRevision(User user, Problem problem, AttemptOutcome outcome, FollowUpType followUpType) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = timeService.getLocalDate(user.getId());
         RevisionCard card = revisionCardRepository.findByUserIdAndProblemId(user.getId(), problem.getId())
                 .orElse(null);
 
@@ -77,7 +83,7 @@ public class RevisionService {
         if (card != null) {
             card.setReviewCount(reviewCount);
             card.setLastOutcome(outcome);
-            card.setLastReviewedAt(LocalDateTime.now());
+            card.setLastReviewedAt(timeService.now());
             card.setRequiredFollowUp(followUpType);
 
             if (outcome == AttemptOutcome.SOLVED_INDEPENDENTLY) {
@@ -112,7 +118,7 @@ public class RevisionService {
                     .problem(problem)
                     .reviewCount(reviewCount)
                     .lastOutcome(outcome)
-                    .lastReviewedAt(LocalDateTime.now())
+                    .lastReviewedAt(timeService.now())
                     .requiredFollowUp(followUpType)
                     .nextReviewDate(nextReviewDate)
                     .build();
@@ -143,81 +149,25 @@ public class RevisionService {
         ).toList();
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public RecallCheckResponseDto submitRecallCheck(Long userId, Long cardId, String userApproach) {
-        RevisionCard card = revisionCardRepository.findById(cardId)
-                .filter(c -> c.getUser().getId().equals(userId))
-                .orElseThrow(() -> new ResourceNotFoundException("Revision card not found: " + cardId));
-
-        Problem problem = card.getProblem();
-        List<ProblemPattern> problemPatterns = problemPatternRepository.findByProblemIdWithPattern(problem.getId());
-        String patternsStr = problemPatterns.stream()
-                .map(pp -> pp.getPattern().getName())
-                .collect(Collectors.joining(", "));
-
-        Optional<UserProblemStatus> statusOpt = userProblemStatusRepository.findByUserIdAndProblemId(userId, problem.getId());
-        String insightNote = statusOpt.map(UserProblemStatus::getInsightNote).orElse(null);
-
-        RecallGradingRequest gradingRequest = RecallGradingRequest.builder()
-                .problemTitle(problem.getCanonicalTitle())
-                .descriptionHint(problem.getDescriptionHint())
-                .referenceApproach(problem.getReferenceApproach())
-                .optimalComplexity(problem.getOptimalComplexity())
-                .patterns(patternsStr)
-                .insightNote(insightNote)
-                .userApproach(userApproach)
-                .build();
-
-        // Remote AI call executed outside transaction to prevent connection pool exhaustion
-        RecallGradingResult result = recallGradingService.grade(gradingRequest);
-
-        return saveRecallCheck(cardId, userApproach, result);
-    }
-
-    @Transactional
-    public RecallCheckResponseDto saveRecallCheck(Long cardId, String userApproach, RecallGradingResult result) {
-        RevisionCard card = revisionCardRepository.findById(cardId)
-                .orElseThrow(() -> new ResourceNotFoundException("Revision card not found: " + cardId));
-
-        RecallCheck check = RecallCheck.builder()
-                .revisionCard(card)
-                .userApproach(userApproach != null ? userApproach : "")
-                .aiAssessment(result.getGrade())
-                .aiReasoning(result.getReasoning())
-                .userOverride(null)
-                .finalGrade(result.getGrade())
-                .build();
-
-        RecallCheck saved = recallCheckRepository.save(check);
-
-        return RecallCheckResponseDto.builder()
-                .recallCheckId(saved.getId())
-                .aiAssessment(saved.getAiAssessment())
-                .aiReasoning(saved.getAiReasoning())
-                .canOverride(true)
-                .build();
+        var input = recallTransactions.prepareByCard(userId, cardId, userApproach);
+        RecallGradingResult result = recallGradingService.grade(input.request());
+        return recallTransactions.persist(userId, input.cardId(), userApproach, result);
     }
 
     @Transactional
     public RevisionCardDto reviewRevision(Long userId, Long cardId, AttemptOutcome outcome) {
-        RevisionCard card = revisionCardRepository.findById(cardId)
-                .filter(c -> c.getUser().getId().equals(userId))
-                .orElseThrow(() -> new ResourceNotFoundException("Revision card not found: " + cardId));
-
-        patternStateService.updatePatternStatesOnAttempt(card.getUser(), card.getProblem(), outcome);
-        FollowUpType followUpType = switch (outcome) {
-            case COULD_NOT_SOLVE -> FollowUpType.CODE_FROM_SCRATCH;
-            case SOLVED_WITH_HELP -> FollowUpType.EDGE_CASE_LIST;
-            case SOLVED_INDEPENDENTLY -> null;
-        };
-        scheduleRevision(card.getUser(), card.getProblem(), outcome, followUpType);
-        updateUserProblemStatusOnReview(card.getUser(), card.getProblem(), outcome);
-        completePlanItemIfPresent(userId, card.getProblem().getId());
-
-        return toDto(card);
+        if (outcome == null) throw new BadRequestException("Outcome is required");
+        return reviewRevisionWithRecall(userId, cardId, ReviewRevisionRequest.builder().outcome(outcome.name()).build());
     }
 
     @Transactional
     public RevisionCardDto reviewRevisionWithRecall(Long userId, Long cardId, ReviewRevisionRequest request) {
+        // All attempts and confirmations for a learner share this lock. A waiting
+        // confirmation reads confirmedAt only after the first update commits.
+        userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
         RevisionCard card = revisionCardRepository.findById(cardId)
                 .filter(c -> c.getUser().getId().equals(userId))
                 .orElseThrow(() -> new ResourceNotFoundException("Revision card not found: " + cardId));
@@ -225,6 +175,7 @@ public class RevisionService {
         if (request == null || (request.getRecallCheckId() == null && request.getOutcome() == null)) {
             throw new BadRequestException("Either recallCheckId or outcome must be provided");
         }
+        validateReviewSignals(request);
 
         AttemptOutcome finalOutcome;
         FollowUpType followUpType = null;
@@ -238,15 +189,28 @@ public class RevisionService {
             if (check.getRevisionCard() == null || !check.getRevisionCard().getId().equals(card.getId())) {
                 throw new BadRequestException("Recall check does not belong to this revision card");
             }
+            if (Boolean.TRUE.equals(check.getLegacyInvalidated())) {
+                throw new BadRequestException("This legacy recall check has expired. Submit a fresh recall before confirming.");
+            }
+            String overrideVal = request.getUserOverride() != null ? request.getUserOverride() : request.getOverrideGrade();
+            RecallGrade overrideGrade = overrideVal != null && !overrideVal.isBlank() ? parseRecallGrade(overrideVal) : null;
+            if (check.getConfirmedAt() != null) {
+                if (overrideGrade != null && overrideGrade != check.getFinalGrade()) {
+                    throw new BadRequestException("Recall check has already been confirmed with a different grade");
+                }
+                return toDto(card);
+            }
 
             RecallGrade finalGrade = check.getAiAssessment();
-            String overrideVal = request.getUserOverride() != null ? request.getUserOverride() : request.getOverrideGrade();
             if (overrideVal != null && !overrideVal.trim().isEmpty()) {
-                RecallGrade overrideGrade = parseRecallGrade(overrideVal.trim().toUpperCase());
                 check.setUserOverride(overrideGrade);
                 check.setFinalGrade(overrideGrade);
                 finalGrade = overrideGrade;
             }
+            if (finalGrade == RecallGrade.PASS && request.getHintsUsed() != null && request.getHintsUsed() > 0) {
+                throw new BadRequestException("An independent recall cannot use hints; choose a partial grade");
+            }
+            check.setConfirmedAt(timeService.now());
             recallCheckRepository.save(check);
 
             patternStateService.updatePatternStatesOnRecallGrade(card.getUser(), card.getProblem(), finalGrade);
@@ -264,22 +228,30 @@ public class RevisionService {
             };
         } else {
             finalOutcome = parseAttemptOutcome(request.getOutcome());
+            if (finalOutcome == AttemptOutcome.SOLVED_INDEPENDENTLY && request.getHintsUsed() != null && request.getHintsUsed() > 0) {
+                throw new BadRequestException("An independent solve cannot use hints");
+            }
             patternStateService.updatePatternStatesOnAttempt(card.getUser(), card.getProblem(), finalOutcome);
             followUpType = switch (finalOutcome) {
                 case COULD_NOT_SOLVE -> FollowUpType.CODE_FROM_SCRATCH;
                 case SOLVED_WITH_HELP -> FollowUpType.EDGE_CASE_LIST;
                 case SOLVED_INDEPENDENTLY -> null;
             };
+            if (finalOutcome != AttemptOutcome.SOLVED_INDEPENDENTLY && request.getFailureReason() != null) {
+                followUpType = followUpAssigner.assign(card.getProblem(), request.getFailureReason()).getFollowUpType();
+            }
         }
 
         scheduleRevision(card.getUser(), card.getProblem(), finalOutcome, followUpType);
-        updateUserProblemStatusOnReview(card.getUser(), card.getProblem(), finalOutcome);
+        updateUserProblemStatusOnReview(card.getUser(), card.getProblem(), finalOutcome, request.getFailureReason());
+        attemptHistoryService.recordReview(card.getUser(), card.getProblem(), finalOutcome, request.getRecallCheckId() != null,
+                request.getRecallCheckId(), request.getFailureReason(), request.getTimeTakenSec(), request.getHintsUsed(), request.getNotes(), followUpType);
         completePlanItemIfPresent(userId, card.getProblem().getId());
 
         return toDto(card);
     }
 
-    private void updateUserProblemStatusOnReview(User user, Problem problem, AttemptOutcome outcome) {
+    private void updateUserProblemStatusOnReview(User user, Problem problem, AttemptOutcome outcome, FailureReason reason) {
         UserProblemStatus status = userProblemStatusRepository.findByUserIdAndProblemId(user.getId(), problem.getId())
                 .orElseGet(() -> UserProblemStatus.builder()
                         .user(user)
@@ -289,7 +261,7 @@ public class RevisionService {
                         .independentSolves(0)
                         .build());
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = timeService.now();
         ProblemStatus newStatus;
         if (outcome == AttemptOutcome.SOLVED_INDEPENDENTLY) {
             newStatus = ProblemStatus.SOLVED_INDEPENDENTLY;
@@ -309,43 +281,60 @@ public class RevisionService {
         status.setStatus(newStatus);
         status.setTotalAttempts((status.getTotalAttempts() != null ? status.getTotalAttempts() : 0) + 1);
         status.setLastOutcome(outcome);
+        status.setLastFailureReason(reason);
         status.setLastAttemptedAt(now);
         userProblemStatusRepository.save(status);
     }
 
     private void completePlanItemIfPresent(Long userId, Long problemId) {
         Optional<DailyPlanItem> planItemOpt = dailyPlanItemRepository.findItemForToday(
-                userId, LocalDate.now(), problemId
+                userId, timeService.getLocalDate(userId), problemId
         );
         if (planItemOpt.isPresent()) {
             DailyPlanItem item = planItemOpt.get();
             item.setCompleted(true);
-            item.setCompletedAt(LocalDateTime.now());
+            item.setSkipped(false);
+            item.setSkippedReason(null);
+            item.setCompletedAt(timeService.now());
             dailyPlanItemRepository.save(item);
         }
     }
 
     private RecallGrade parseRecallGrade(String str) {
+        String normalized = str == null ? "" : str.trim().toUpperCase(java.util.Locale.ROOT);
         try {
-            return RecallGrade.valueOf(str);
-        } catch (Exception e) {
-            return switch (str) {
+            return RecallGrade.valueOf(normalized);
+        } catch (IllegalArgumentException e) {
+            return switch (normalized) {
                 case "SOLVED_INDEPENDENTLY" -> RecallGrade.PASS;
                 case "SOLVED_WITH_HELP" -> RecallGrade.PARTIAL;
-                default -> RecallGrade.FAIL;
+                case "COULD_NOT_SOLVE" -> RecallGrade.FAIL;
+                default -> throw new BadRequestException("Invalid recall grade: " + str);
             };
         }
     }
 
     private AttemptOutcome parseAttemptOutcome(String str) {
+        String normalized = str == null ? "" : str.trim().toUpperCase(java.util.Locale.ROOT);
         try {
-            return AttemptOutcome.valueOf(str);
-        } catch (Exception e) {
-            return switch (str.toUpperCase()) {
+            return AttemptOutcome.valueOf(normalized);
+        } catch (IllegalArgumentException e) {
+            return switch (normalized) {
                 case "PASS" -> AttemptOutcome.SOLVED_INDEPENDENTLY;
                 case "PARTIAL" -> AttemptOutcome.SOLVED_WITH_HELP;
-                default -> AttemptOutcome.COULD_NOT_SOLVE;
+                case "FAIL" -> AttemptOutcome.COULD_NOT_SOLVE;
+                default -> throw new BadRequestException("Invalid revision outcome: " + str);
             };
+        }
+    }
+
+    private void validateReviewSignals(ReviewRevisionRequest request) {
+        if ((request.getTimeTakenSec() != null && request.getTimeTakenSec() < 0)
+                || (request.getHintsUsed() != null && request.getHintsUsed() < 0)) {
+            throw new BadRequestException("Time taken and hints used cannot be negative");
+        }
+        if (request.getRecallCheckId() != null && request.getOutcome() != null) {
+            throw new BadRequestException("Provide either a recall check or a coding outcome, not both");
         }
     }
 
@@ -363,26 +352,17 @@ public class RevisionService {
                 .build();
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public RecallCheckResponseDto submitRecallCheckByProblemId(Long userId, Long problemId, String userApproach) {
-        RevisionCard card = revisionCardRepository.findByUserIdAndProblemId(userId, problemId)
-                .orElseGet(() -> {
-                    Problem p = problemRepository.findById(problemId)
-                            .orElseThrow(() -> new ResourceNotFoundException("Problem not found: " + problemId));
-                    User u = userRepository.findById(userId)
-                            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
-                    return revisionCardRepository.save(RevisionCard.builder()
-                            .user(u)
-                            .problem(p)
-                            .nextReviewDate(LocalDate.now())
-                            .reviewCount(0)
-                            .build());
-                });
-        return submitRecallCheck(userId, card.getId(), userApproach);
+        var input = recallTransactions.prepareByProblem(userId, problemId, userApproach);
+        var result = recallGradingService.grade(input.request());
+        return recallTransactions.persist(userId, input.cardId(), userApproach, result);
     }
 
     @Transactional
     public RevisionCardDto reviewRevisionByProblemIdWithRecall(Long userId, Long problemId, ReviewRevisionRequest request) {
+        userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
         RevisionCard card = revisionCardRepository.findByUserIdAndProblemId(userId, problemId)
                 .orElseGet(() -> {
                     Problem p = problemRepository.findById(problemId)
@@ -392,7 +372,7 @@ public class RevisionService {
                     return revisionCardRepository.save(RevisionCard.builder()
                             .user(u)
                             .problem(p)
-                            .nextReviewDate(LocalDate.now())
+                            .nextReviewDate(timeService.getLocalDate(userId))
                             .reviewCount(0)
                             .build());
                 });

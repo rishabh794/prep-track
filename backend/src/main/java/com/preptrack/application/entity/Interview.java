@@ -42,6 +42,9 @@ public class Interview {
     @Column(name = "ai_extracted")
     private Boolean aiExtracted = false;
 
+    @Column(name = "topics_confirmed_at")
+    private LocalDateTime topicsConfirmedAt;
+
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(length = 20)

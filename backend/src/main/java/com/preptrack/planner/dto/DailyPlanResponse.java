@@ -19,6 +19,9 @@ public class DailyPlanResponse {
     private Integer totalEstimatedMinutes;
     private Integer dailyBudgetMinutes;
     private Integer completedMinutes;
+    private Integer remainingEstimatedMinutes;
+    private Integer skippedMinutes;
+    private Integer skippedCount;
     private Integer completedCount;
     private Integer totalCount;
     private OverdueSummaryDto overdueSummary;

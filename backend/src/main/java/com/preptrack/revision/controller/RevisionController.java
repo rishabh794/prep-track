@@ -4,6 +4,7 @@ import com.preptrack.ai.dto.RecallCheckResponseDto;
 import com.preptrack.auth.entity.User;
 import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.common.exception.ResourceNotFoundException;
+import com.preptrack.common.service.TimeService;
 import com.preptrack.revision.dto.RevisionCardDto;
 import com.preptrack.revision.service.RevisionService;
 import com.preptrack.revision.dto.ReviewRevisionRequest;
@@ -28,6 +29,7 @@ public class RevisionController {
 
     private final RevisionService revisionService;
     private final UserRepository userRepository;
+    private final TimeService timeService;
 
     private Long getUserId(UserDetails userDetails) {
         if (userDetails instanceof UserDetailsImpl impl) {
@@ -43,8 +45,9 @@ public class RevisionController {
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(required = false) String date
     ) {
-        LocalDate targetDate = date != null ? LocalDate.parse(date) : LocalDate.now();
-        List<RevisionCardDto> due = revisionService.getDueRevisions(getUserId(userDetails), targetDate);
+        Long userId = getUserId(userDetails);
+        LocalDate targetDate = date != null ? LocalDate.parse(date) : timeService.getLocalDate(userId);
+        List<RevisionCardDto> due = revisionService.getDueRevisions(userId, targetDate);
         return ResponseEntity.ok(due);
     }
 

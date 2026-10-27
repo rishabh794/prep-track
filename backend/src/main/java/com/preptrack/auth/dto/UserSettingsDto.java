@@ -15,4 +15,5 @@ public class UserSettingsDto {
     private Integer maxRevisionsDay;
     private Double targetSkillLevel;
     private Boolean onboardingComplete;
+    private String timezone;
 }

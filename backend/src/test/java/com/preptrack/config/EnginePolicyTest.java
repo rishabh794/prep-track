@@ -93,7 +93,7 @@ class EnginePolicyTest {
         var links = List.of(ProblemPattern.builder().problem(problem).pattern(pattern).weight(1.0).build());
         var state = UserPatternState.builder().pattern(pattern).skill(0.95).build();
         var maintenance = new MaintenanceScorer(mock(ProblemPatternRepository.class), mock(UserPatternStateRepository.class),
-                new RetentionCalculator(), relevance, policy);
+                new RetentionCalculator(), relevance, policy, mock(com.preptrack.common.service.TimeService.class));
         var score = maintenance.score(1L, problem, 0.8, LocalDate.of(2026, 1, 1), true, FollowUpType.CODE_FROM_SCRATCH,
                 links, Map.of(1L, state), List.of());
         assertThat(score.value).isEqualTo(2.4);

@@ -35,7 +35,7 @@ public class PlannerController {
     public ResponseEntity<DailyPlanResponse> getTodayPlan(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        DailyPlanResponse response = plannerService.getOrCreatePlanForToday(getUserId(userDetails), LocalDate.now());
+        DailyPlanResponse response = plannerService.getOrCreatePlanForToday(getUserId(userDetails), null);
         return ResponseEntity.ok(response);
     }
 
@@ -53,7 +53,7 @@ public class PlannerController {
     public ResponseEntity<DailyPlanResponse> regenerateTodayPlan(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        DailyPlanResponse response = plannerService.regeneratePlan(getUserId(userDetails), LocalDate.now());
+        DailyPlanResponse response = plannerService.regeneratePlan(getUserId(userDetails), null);
         return ResponseEntity.ok(response);
     }
 

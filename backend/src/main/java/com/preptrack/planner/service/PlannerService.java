@@ -8,6 +8,8 @@ import com.preptrack.config.EngineProperties;
 import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.auth.repository.UserSettingsRepository;
 import com.preptrack.common.exception.ResourceNotFoundException;
+import com.preptrack.common.exception.BadRequestException;
+import com.preptrack.common.service.TimeService;
 import com.preptrack.pattern.entity.ProblemPattern;
 import com.preptrack.pattern.repository.ProblemPatternRepository;
 import com.preptrack.planner.dto.*;
@@ -46,10 +48,11 @@ public class PlannerService {
     private final ReasonFormatter reasonFormatter;
     private final ObjectMapper objectMapper;
     private final EngineProperties policy;
+    private final TimeService timeService;
 
     @Transactional
     public DailyPlanResponse getOrCreatePlanForToday(Long userId, LocalDate date) {
-        LocalDate planDate = date != null ? date : LocalDate.now();
+        LocalDate planDate = date != null ? date : timeService.getLocalDate(userId);
 
         // Lock user row to serialize concurrent plan generations and prevent unique constraint races
         userRepository.findByIdForUpdate(userId);
@@ -62,10 +65,10 @@ public class PlannerService {
         return generateAndPersistPlan(userId, planDate);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public DailyPlanResponse getPlanByDate(Long userId, LocalDate date) {
-        LocalDate planDate = date != null ? date : LocalDate.now();
-        if (planDate.equals(LocalDate.now())) {
+        LocalDate planDate = date != null ? date : timeService.getLocalDate(userId);
+        if (planDate.equals(timeService.getLocalDate(userId))) {
             return getOrCreatePlanForToday(userId, planDate);
         }
         DailyPlan plan = dailyPlanRepository.findByUserIdAndPlanDateWithItems(userId, planDate)
@@ -75,7 +78,7 @@ public class PlannerService {
 
     @Transactional
     public DailyPlanResponse regeneratePlan(Long userId, LocalDate date) {
-        LocalDate planDate = date != null ? date : LocalDate.now();
+        LocalDate planDate = date != null ? date : timeService.getLocalDate(userId);
         userRepository.findByIdForUpdate(userId);
 
         Optional<DailyPlan> existingOpt = dailyPlanRepository.findByUserIdAndPlanDateWithItems(userId, planDate);
@@ -168,12 +171,15 @@ public class PlannerService {
             itemsList.add(item);
         }
 
-        int totalMinutes = itemsList.stream().mapToInt(DailyPlanItem::getEstimatedMinutes).sum();
-        double totalValue = itemsList.stream().mapToDouble(DailyPlanItem::getValueScore).sum();
+        int totalMinutes = itemsList.stream().filter(i -> !Boolean.TRUE.equals(i.getSkipped()))
+                .mapToInt(DailyPlanItem::getEstimatedMinutes).sum();
+        double totalValue = itemsList.stream().filter(i -> !Boolean.TRUE.equals(i.getSkipped()))
+                .mapToDouble(DailyPlanItem::getValueScore).sum();
         int overdueTotal = revisionCardRepository.countOverdueCards(userId, planDate);
         int overdueShown = (int) selected.stream().filter(PlanCandidate::isOverdue).count();
 
         existing.setTotalEstimatedMin(totalMinutes);
+        existing.setBudgetMinutes(budget);
         existing.setTotalValue(Math.round(totalValue * 100.0) / 100.0);
         existing.setOverdueTotal(overdueTotal);
         existing.setOverdueShown(overdueShown);
@@ -184,14 +190,25 @@ public class PlannerService {
 
     @Transactional
     public DailyPlanResponse skipPlanItem(Long userId, Long itemId, String reason) {
+        userRepository.findByIdForUpdate(userId);
         DailyPlanItem item = dailyPlanItemRepository.findByIdAndUserId(itemId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Plan item not found: " + itemId));
+
+        if (Boolean.TRUE.equals(item.getCompleted())) {
+            throw new BadRequestException("Completed work cannot be skipped");
+        }
 
         item.setSkipped(true);
         item.setSkippedReason(reason);
         dailyPlanItemRepository.save(item);
+        DailyPlan plan = item.getDailyPlan();
+        plan.setTotalEstimatedMin(plan.getItems().stream().filter(i -> !Boolean.TRUE.equals(i.getSkipped()))
+                .mapToInt(DailyPlanItem::getEstimatedMinutes).sum());
+        plan.setTotalValue(Math.round(plan.getItems().stream().filter(i -> !Boolean.TRUE.equals(i.getSkipped()))
+                .mapToDouble(DailyPlanItem::getValueScore).sum() * 100.0) / 100.0);
+        dailyPlanRepository.save(plan);
 
-        return mapToResponse(item.getDailyPlan());
+        return mapToResponse(plan);
     }
 
     private DailyPlanResponse generateAndPersistPlan(Long userId, LocalDate planDate) {
@@ -273,6 +290,9 @@ public class PlannerService {
 
         int completedMinutes = 0;
         int completedCount = 0;
+        int skippedMinutes = 0;
+        int skippedCount = 0;
+        int remainingMinutes = 0;
 
         List<Long> problemIds = items.stream().map(i -> i.getProblem().getId()).toList();
         Map<Long, List<String>> problemPatternsMap = new HashMap<>();
@@ -293,6 +313,11 @@ public class PlannerService {
             if (Boolean.TRUE.equals(item.getCompleted())) {
                 completedMinutes += item.getEstimatedMinutes();
                 completedCount++;
+            } else if (Boolean.TRUE.equals(item.getSkipped())) {
+                skippedMinutes += item.getEstimatedMinutes();
+                skippedCount++;
+            } else {
+                remainingMinutes += item.getEstimatedMinutes();
             }
 
             ValueBreakdown breakdown = null;
@@ -346,9 +371,12 @@ public class PlannerService {
         return DailyPlanResponse.builder()
                 .planId(plan.getId())
                 .date(plan.getPlanDate())
-                .totalEstimatedMinutes(plan.getTotalEstimatedMin())
+                .totalEstimatedMinutes(completedMinutes + remainingMinutes)
                 .dailyBudgetMinutes(plan.getBudgetMinutes())
                 .completedMinutes(completedMinutes)
+                .remainingEstimatedMinutes(remainingMinutes)
+                .skippedMinutes(skippedMinutes)
+                .skippedCount(skippedCount)
                 .completedCount(completedCount)
                 .totalCount(items.size())
                 .overdueSummary(overdueSummary)

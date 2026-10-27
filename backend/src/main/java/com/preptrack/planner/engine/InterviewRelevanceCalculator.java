@@ -12,6 +12,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import com.preptrack.common.service.TimeService;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -24,6 +25,7 @@ public class InterviewRelevanceCalculator {
     private final InterviewRepository interviewRepository;
     private final CompanyProfileService companyProfiles;
     private final EngineProperties policy;
+    private final TimeService timeService;
 
     @Data
     @Builder
@@ -91,7 +93,8 @@ public class InterviewRelevanceCalculator {
         if (state == null || state.getInterviewBoost() == null || state.getInterviewBoost() <= 0.0 || state.getInterviewBoostSetAt() == null) {
             return 0.0;
         }
-        LocalDate setDate = state.getInterviewBoostSetAt().toLocalDate();
+        LocalDate setDate = state.getUser() == null ? state.getInterviewBoostSetAt().toLocalDate()
+                : timeService.getPracticeDate(state.getInterviewBoostSetAt(), state.getUser().getId());
         long daysSince = ChronoUnit.DAYS.between(setDate, currentDate);
         int decayDays = policy.getInterviewBoostDecayDays();
         if (daysSince >= decayDays || daysSince < 0) {

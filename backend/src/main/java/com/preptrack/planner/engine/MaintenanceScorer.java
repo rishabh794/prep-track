@@ -10,6 +10,7 @@ import com.preptrack.planner.dto.ValueBreakdown;
 import com.preptrack.problem.entity.Problem;
 import com.preptrack.revision.entity.FollowUpType;
 import com.preptrack.config.EngineProperties;
+import com.preptrack.common.service.TimeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +29,7 @@ public class MaintenanceScorer {
     private final RetentionCalculator retentionCalculator;
     private final InterviewRelevanceCalculator interviewRelevanceCalculator;
     private final EngineProperties policy;
+    private final TimeService timeService;
 
     public static class ScoredResult {
         public double value;
@@ -101,10 +103,14 @@ public class MaintenanceScorer {
             double stability = (state != null && state.getStability() != null) ? state.getStability() : policy.getInitialStability();
             int solves = (state != null && state.getIndependentSolves() != null) ? state.getIndependentSolves() : 0;
 
+            var lastPracticed = state != null ? state.getLastPracticedAt() : null;
+            if (lastPracticed != null && state.getUser() != null) {
+                lastPracticed = timeService.getPracticeDate(lastPracticed, userId).atStartOfDay();
+            }
             double retention = retentionCalculator.compute(
-                    state != null ? state.getLastPracticedAt() : null,
+                    lastPracticed,
                     stability,
-                    planDate != null ? planDate.atStartOfDay() : java.time.LocalDateTime.now()
+                    (planDate != null ? planDate : timeService.getLocalDate(userId)).atStartOfDay()
             );
 
             interviewCtx = upcomingInterviews != null
@@ -157,9 +163,10 @@ public class MaintenanceScorer {
         }
 
         // Overdue age bonus for due revisions
+        double overdueBonus = 1.0;
         if (!isRetry && nextReviewDate != null && planDate != null && nextReviewDate.isBefore(planDate)) {
             long overdueDays = java.time.temporal.ChronoUnit.DAYS.between(nextReviewDate, planDate);
-            double overdueBonus = 1.0 + Math.min(policy.getMaxOverdueBonus(), overdueDays * policy.getOverdueBonusPerDay());
+            overdueBonus = 1.0 + Math.min(policy.getMaxOverdueBonus(), overdueDays * policy.getOverdueBonusPerDay());
             sumValue *= overdueBonus;
         }
 
@@ -171,6 +178,7 @@ public class MaintenanceScorer {
                 .retryBoost(retryMultiplier)
                 .followUpMultiplier(followUpMultiplier)
                 .diversityPenalty(1.0)
+                .overdueBonus(overdueBonus)
                 .totalValue(finalTotal)
                 .build();
 

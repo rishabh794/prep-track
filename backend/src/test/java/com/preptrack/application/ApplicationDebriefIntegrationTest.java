@@ -26,7 +26,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -36,10 +35,9 @@ import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(properties = {"spring.jpa.open-in-view=false", "gemini.api-key="})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 class ApplicationDebriefIntegrationTest {
 
     @Autowired
@@ -61,12 +59,13 @@ class ApplicationDebriefIntegrationTest {
     private AcquisitionScorer acquisitionScorer;
 
     private String authToken;
+    private Long userId;
     private Pattern twoPointerPattern;
 
     @BeforeEach
     void setUp() throws Exception {
         RegisterRequest registerReq = RegisterRequest.builder()
-                .email("appdebrief@example.com")
+                .email(java.util.UUID.randomUUID() + "@appdebrief.example.com")
                 .password("password123")
                 .displayName("App Debrief Tester")
                 .build();
@@ -80,6 +79,7 @@ class ApplicationDebriefIntegrationTest {
         com.fasterxml.jackson.databind.JsonNode authJson = objectMapper.readTree(result.getResponse().getContentAsString());
         String rawToken = authJson.has("token") ? authJson.path("token").asText() : authJson.path("accessToken").asText();
         authToken = "Bearer " + rawToken;
+        userId = authJson.path("userId").asLong();
 
         twoPointerPattern = patternRepository.findBySlug("two-pointer-squeeze")
                 .orElseGet(() -> patternRepository.findAll().stream().findFirst().orElseThrow());
@@ -285,11 +285,7 @@ class ApplicationDebriefIntegrationTest {
                 .andExpect(jsonPath("$.topics[0].wasWeak", is(true)));
 
         // 4. Verify pattern state in DB received the +0.3 boost
-        List<UserPatternState> patternStates = userPatternStateRepository.findAll();
-        UserPatternState boostedState = patternStates.stream()
-                .filter(ps -> ps.getPattern().getId().equals(twoPointerPattern.getId()))
-                .findFirst()
-                .orElse(null);
+        UserPatternState boostedState = userPatternStateRepository.findByUserIdAndPatternId(userId, twoPointerPattern.getId()).orElse(null);
 
         assertThat(boostedState).isNotNull();
         assertThat(boostedState.getInterviewBoost()).isGreaterThanOrEqualTo(0.30);

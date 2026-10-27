@@ -20,10 +20,10 @@ import static org.mockito.Mockito.mock;
 
 class SimulationEngineTest {
     private final EngineProperties policy = new EngineProperties();
-    private final InterviewRelevanceCalculator relevance = new InterviewRelevanceCalculator(mock(InterviewRepository.class), mock(CompanyProfileService.class), policy);
+    private final InterviewRelevanceCalculator relevance = new InterviewRelevanceCalculator(mock(InterviewRepository.class), mock(CompanyProfileService.class), policy, mock(com.preptrack.common.service.TimeService.class));
     private final PrepTrackStrategy strategy = new PrepTrackStrategy(
             new AcquisitionScorer(mock(ProblemPatternRepository.class), mock(UserPatternStateRepository.class), relevance, policy),
-            new MaintenanceScorer(mock(ProblemPatternRepository.class), mock(UserPatternStateRepository.class), new RetentionCalculator(), relevance, policy),
+            new MaintenanceScorer(mock(ProblemPatternRepository.class), mock(UserPatternStateRepository.class), new RetentionCalculator(), relevance, policy, mock(com.preptrack.common.service.TimeService.class)),
             new KnapsackSolver(), new RevisionTimeEstimator(policy));
 
     private SimulationCatalog catalog() {

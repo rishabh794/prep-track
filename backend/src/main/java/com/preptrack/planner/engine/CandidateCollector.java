@@ -7,7 +7,9 @@ import com.preptrack.application.entity.InterviewOutcome;
 import com.preptrack.application.repository.InterviewRepository;
 import com.preptrack.attempt.entity.ProblemStatus;
 import com.preptrack.attempt.entity.UserProblemStatus;
+import com.preptrack.attempt.entity.AttemptOutcome;
 import com.preptrack.attempt.repository.UserProblemStatusRepository;
+import com.preptrack.attempt.repository.UserProblemAttemptRepository;
 import com.preptrack.attempt.service.FollowUpAssigner;
 import com.preptrack.attempt.service.FollowUpAssignment;
 import com.preptrack.pattern.entity.ProblemPattern;
@@ -17,6 +19,7 @@ import com.preptrack.pattern.repository.UserPatternStateRepository;
 import com.preptrack.planner.entity.PlanItemType;
 import com.preptrack.problem.entity.Problem;
 import com.preptrack.revision.entity.RevisionCard;
+import com.preptrack.revision.entity.FollowUpType;
 import com.preptrack.revision.repository.RevisionCardRepository;
 import com.preptrack.revision.service.RevisionTimeEstimator;
 import com.preptrack.sheet.entity.SheetProblem;
@@ -28,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -48,6 +52,7 @@ public class CandidateCollector {
     private final RevisionTimeEstimator revisionTimeEstimator;
     private final FollowUpAssigner followUpAssigner;
     private final EngineProperties policy;
+    private final UserProblemAttemptRepository userProblemAttemptRepository;
 
     public List<PlanCandidate> collectCandidates(Long userId, double targetLevel, LocalDate planDate) {
         List<PlanCandidate> candidates = new ArrayList<>();
@@ -64,6 +69,8 @@ public class CandidateCollector {
 
         // 2. Due Revisions
         List<RevisionCard> dueCards = revisionCardRepository.findDueCardsWithProblem(userId, planDate);
+        Map<Long, RevisionCard> dueCardByProblem = dueCards.stream()
+                .collect(Collectors.toMap(card -> card.getProblem().getId(), card -> card));
 
         // 3. New Problems from selected sheets (batched in 1 query)
         List<UserSheet> userSheets = userSheetRepository.findByUserIdWithSheet(userId);
@@ -82,6 +89,9 @@ public class CandidateCollector {
                 independentlySolvedProblemIds.add(s.getProblem().getId());
             }
         }
+        Map<Long, UserProblemStatus> statusByProblem = new HashMap<>();
+        attemptedStatuses.forEach(s -> statusByProblem.put(s.getProblem().getId(), s));
+        solvedStatuses.forEach(s -> statusByProblem.put(s.getProblem().getId(), s));
 
         // Collect all distinct problem IDs across retries, revisions, and sheet problems
         Set<Long> allProblemIds = new HashSet<>();
@@ -122,17 +132,39 @@ public class CandidateCollector {
         attemptedStatuses.forEach(ups -> retryAndRevisionProblemIds.add(ups.getProblem().getId()));
         dueCards.forEach(card -> retryAndRevisionProblemIds.add(card.getProblem().getId()));
         Map<Long, Problem> prereqMap = followUpAssigner.getPrereqMap(retryAndRevisionProblemIds);
+        List<Long> prerequisiteIds = prereqMap.values().stream().map(Problem::getId).distinct().toList();
+        Map<Long, LocalDateTime> independentCodingAt = prerequisiteIds.isEmpty() ? Collections.emptyMap()
+                : userProblemAttemptRepository.findLatestIndependentCodingByProblemIds(userId, prerequisiteIds).stream()
+                .collect(Collectors.toMap(UserProblemAttemptRepository.IndependentCodingPractice::getProblemId,
+                        UserProblemAttemptRepository.IndependentCodingPractice::getLastCodingAt));
+        List<Long> missingPrereqPatterns = prereqMap.values().stream().map(Problem::getId).distinct()
+                .filter(id -> !patternsByProblemId.containsKey(id)).toList();
+        if (!missingPrereqPatterns.isEmpty()) {
+            for (ProblemPattern pp : problemPatternRepository.findByProblemIdInWithPattern(missingPrereqPatterns)) {
+                patternsByProblemId.computeIfAbsent(pp.getProblem().getId(), ignored -> new ArrayList<>()).add(pp);
+            }
+        }
 
         // Process 1: Retries
         for (UserProblemStatus ups : attemptedStatuses) {
-            Problem p = ups.getProblem();
-            seenProblemIds.add(p.getId());
+            Problem original = ups.getProblem();
+            if (!seenProblemIds.add(original.getId())) continue;
+            FollowUpAssignment followUp = followUpAssigner.assign(original, ups.getLastFailureReason(), prereqMap);
+            RevisionCard dueCard = dueCardByProblem.get(original.getId());
+            if (followUp == null && dueCard != null && dueCard.getRequiredFollowUp() != null) {
+                followUp = FollowUpAssignment.builder().followUpType(dueCard.getRequiredFollowUp())
+                        .followUpDetail(followUpAssigner.getDetailForType(original, dueCard.getRequiredFollowUp(), prereqMap)).build();
+            }
+            Recovery recovery = recovery(original, followUp != null ? followUp.getFollowUpType() : null,
+                    followUp != null ? followUp.getFollowUpDetail() : null,
+                    ups.getLastAttemptedAt(), prereqMap, statusByProblem, independentCodingAt);
+            Problem p = recovery.problem();
+            if (!p.getId().equals(original.getId()) && !seenProblemIds.add(p.getId())) continue;
 
             List<ProblemPattern> pps = patternsByProblemId.getOrDefault(p.getId(), Collections.emptyList());
-            FollowUpAssignment followUp = followUpAssigner.assign(p, ups.getLastFailureReason(), prereqMap);
             MaintenanceScorer.ScoredResult scored = maintenanceScorer.score(
                     userId, p, targetLevel, planDate, true,
-                    followUp != null ? followUp.getFollowUpType() : null,
+                    recovery.type(),
                     pps, userStateMap, upcomingInterviews, null,
                     patternTotalInSheets, patternSolvedInSheets
             );
@@ -145,8 +177,8 @@ public class CandidateCollector {
                     .timeMinutes(time)
                     .value(scored.value)
                     .valueBreakdown(scored.breakdown)
-                    .followUpType(followUp != null ? followUp.getFollowUpType() : null)
-                    .followUpDetail(followUp != null ? followUp.getFollowUpDetail() : null)
+                    .followUpType(recovery.type())
+                    .followUpDetail(recovery.detail())
                     .primaryPatternId(scored.primaryPatternId)
                     .interviewDays(scored.interviewDays)
                     .interviewCompany(scored.interviewCompany)
@@ -156,33 +188,38 @@ public class CandidateCollector {
 
         // Process 2: Due Revisions
         for (RevisionCard card : dueCards) {
-            Problem p = card.getProblem();
-            if (seenProblemIds.contains(p.getId())) {
+            Problem original = card.getProblem();
+            if (!seenProblemIds.add(original.getId())) {
                 continue;
             }
-            seenProblemIds.add(p.getId());
+            UserProblemStatus originalState = statusByProblem.get(original.getId());
+            LocalDateTime failedAt = originalState != null ? originalState.getLastAttemptedAt() : card.getLastReviewedAt();
+            Recovery recovery = recovery(original, card.getRequiredFollowUp(),
+                    card.getRequiredFollowUp() != null ? followUpAssigner.getDetailForType(original, card.getRequiredFollowUp(), prereqMap) : null,
+                    failedAt, prereqMap, statusByProblem, independentCodingAt);
+            Problem p = recovery.problem();
+            boolean warmup = !p.getId().equals(original.getId());
+            if (warmup && !seenProblemIds.add(p.getId())) continue;
 
             List<ProblemPattern> pps = patternsByProblemId.getOrDefault(p.getId(), Collections.emptyList());
             MaintenanceScorer.ScoredResult scored = maintenanceScorer.score(
-                    userId, p, targetLevel, planDate, false, card.getRequiredFollowUp(),
+                    userId, p, targetLevel, planDate, warmup, recovery.type(),
                     pps, userStateMap, upcomingInterviews, card.getNextReviewDate(),
                     patternTotalInSheets, patternSolvedInSheets
             );
 
-            int time = revisionTimeEstimator.estimateMinutes(card);
-            String followUpDetail = card.getRequiredFollowUp() != null
-                    ? followUpAssigner.getDetailForType(p, card.getRequiredFollowUp(), prereqMap)
-                    : null;
+            int time = warmup ? (p.getEstimatedMinutes() != null ? p.getEstimatedMinutes() : policy.getDefaultProblemMinutes())
+                    : revisionTimeEstimator.estimateMinutes(card);
             boolean isOverdue = card.getNextReviewDate() != null && card.getNextReviewDate().isBefore(planDate);
 
             candidates.add(PlanCandidate.builder()
                     .problem(p)
-                    .type(PlanItemType.REVISION)
+                    .type(warmup ? PlanItemType.RETRY : PlanItemType.REVISION)
                     .timeMinutes(time)
                     .value(scored.value)
                     .valueBreakdown(scored.breakdown)
-                    .followUpType(card.getRequiredFollowUp())
-                    .followUpDetail(followUpDetail)
+                    .followUpType(recovery.type())
+                    .followUpDetail(recovery.detail())
                     .primaryPatternId(scored.primaryPatternId)
                     .interviewDays(scored.interviewDays)
                     .interviewCompany(scored.interviewCompany)
@@ -252,5 +289,28 @@ public class CandidateCollector {
         }
 
         return candidates;
+    }
+
+    private record Recovery(Problem problem, FollowUpType type, String detail) {}
+
+    private Recovery recovery(Problem original, FollowUpType type, String detail, LocalDateTime failedAt,
+                              Map<Long, Problem> prerequisites, Map<Long, UserProblemStatus> states,
+                              Map<Long, LocalDateTime> independentCodingAt) {
+        if (type != FollowUpType.EASIER_PREREQUISITE) return new Recovery(original, type, detail);
+        Problem warmup = prerequisites.get(original.getId());
+        if (warmup == null || warmup.getId().equals(original.getId())) {
+            return new Recovery(original, FollowUpType.CODE_FROM_SCRATCH,
+                    "No linked prerequisite is available. Review the pattern, then code this problem from scratch.");
+        }
+        UserProblemStatus state = states.get(warmup.getId());
+        LocalDateTime codingAt = independentCodingAt.get(warmup.getId());
+        boolean completedSinceFailure = state != null && state.getLastOutcome() == AttemptOutcome.SOLVED_INDEPENDENTLY
+                && codingAt != null && (failedAt == null || !codingAt.isBefore(failedAt));
+        if (completedSinceFailure) {
+            return new Recovery(original, FollowUpType.CODE_FROM_SCRATCH,
+                    "Prerequisite completed: " + warmup.getCanonicalTitle() + ". Retry this problem from scratch.");
+        }
+        return new Recovery(warmup, FollowUpType.EASIER_PREREQUISITE,
+                "Solve this prerequisite independently before retrying " + original.getCanonicalTitle() + ".");
     }
 }

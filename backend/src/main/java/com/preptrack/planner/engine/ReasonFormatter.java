@@ -19,7 +19,8 @@ public class ReasonFormatter {
         StringBuilder reason = new StringBuilder();
 
         if (item.getType() == PlanItemType.RETRY) {
-            reason.append("Couldn't solve yesterday — ");
+            reason.append(item.getFollowUpType() == com.preptrack.revision.entity.FollowUpType.EASIER_PREREQUISITE
+                    ? "Prerequisite recovery — " : "Retry practice — ");
         }
 
         if (top != null) {

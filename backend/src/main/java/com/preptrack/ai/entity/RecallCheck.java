@@ -42,6 +42,13 @@ public class RecallCheck {
     @Column(name = "final_grade", nullable = false, length = 10)
     private RecallGrade finalGrade;
 
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
+    @Column(name = "legacy_invalidated", nullable = false)
+    @Builder.Default
+    private Boolean legacyInvalidated = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

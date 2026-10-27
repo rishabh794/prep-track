@@ -50,6 +50,14 @@ public class UserProblemAttempt {
     private Boolean isRevision = false;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "activity_type", nullable = false, length = 30)
+    @Builder.Default
+    private AttemptActivityType activityType = AttemptActivityType.CODING_ATTEMPT;
+
+    @Column(name = "recall_check_id")
+    private Long recallCheckId;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "follow_up_type", length = 30)
     private FollowUpType followUpType;
 

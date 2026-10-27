@@ -11,6 +11,7 @@ import com.preptrack.attempt.repository.UserProblemStatusRepository;
 import com.preptrack.auth.entity.User;
 import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.common.exception.ResourceNotFoundException;
+import com.preptrack.common.service.TimeService;
 import com.preptrack.pattern.dto.PatternUpdateDto;
 import com.preptrack.pattern.service.PatternStateService;
 import com.preptrack.planner.entity.DailyPlanItem;
@@ -45,6 +46,7 @@ public class AttemptService {
     private final FollowUpAssigner followUpAssigner;
     private final SheetProblemRepository sheetProblemRepository;
     private final DailyPlanItemRepository dailyPlanItemRepository;
+    private final TimeService timeService;
 
     @Transactional
     public AttemptResponseDto recordAttempt(String userEmail, CreateAttemptRequest request) {
@@ -62,10 +64,15 @@ public class AttemptService {
         Problem problem = problemRepository.findById(request.getProblemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Problem not found with id: " + request.getProblemId()));
 
-        LocalDateTime now = LocalDateTime.now();
+        if (request.getOutcome() == AttemptOutcome.SOLVED_INDEPENDENTLY && request.getHintsUsed() != null && request.getHintsUsed() > 0) {
+            throw new com.preptrack.common.exception.BadRequestException("An independent solve cannot include hints; choose solved with help");
+        }
+
+        LocalDateTime now = timeService.now();
         FollowUpAssignment followUp = null;
-        if (request.getOutcome() != AttemptOutcome.SOLVED_INDEPENDENTLY && request.getFailureReason() != null) {
-            followUp = followUpAssigner.assign(problem, request.getFailureReason());
+        if (request.getOutcome() != AttemptOutcome.SOLVED_INDEPENDENTLY) {
+            followUp = request.getFailureReason() != null ? followUpAssigner.assign(problem, request.getFailureReason())
+                    : new FollowUpAssignment(FollowUpType.CODE_FROM_SCRATCH, "Practice this problem from scratch to identify the missing step");
         }
         FollowUpType followUpType = followUp != null ? followUp.getFollowUpType() : null;
 
@@ -78,6 +85,7 @@ public class AttemptService {
                 .timeTakenSec(request.getTimeTakenSec())
                 .hintsUsed(request.getHintsUsed() != null ? request.getHintsUsed() : 0)
                 .isRevision(Boolean.TRUE.equals(request.getIsRevision()))
+                .activityType(Boolean.TRUE.equals(request.getIsRevision()) ? com.preptrack.attempt.entity.AttemptActivityType.CODING_REVIEW : com.preptrack.attempt.entity.AttemptActivityType.CODING_ATTEMPT)
                 .followUpType(followUpType)
                 .notes(request.getNotes())
                 .attemptedAt(now)
@@ -135,11 +143,13 @@ public class AttemptService {
         // 5. If this problem is in today's daily plan, mark it complete!
         boolean planItemCompleted = false;
         Optional<DailyPlanItem> planItemOpt = dailyPlanItemRepository.findItemForToday(
-                user.getId(), LocalDate.now(), problem.getId()
+                user.getId(), timeService.getLocalDate(user.getId()), problem.getId()
         );
         if (planItemOpt.isPresent()) {
             DailyPlanItem planItem = planItemOpt.get();
             planItem.setCompleted(true);
+            planItem.setSkipped(false);
+            planItem.setSkippedReason(null);
             planItem.setCompletedAt(now);
             planItem.setAttempt(savedAttempt);
             dailyPlanItemRepository.save(planItem);

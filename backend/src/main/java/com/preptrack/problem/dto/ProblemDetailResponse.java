@@ -21,4 +21,5 @@ public class ProblemDetailResponse {
     private List<PatternSummaryDto> patterns;
     private List<ProblemSourceDto> sources;
     private List<ProblemRelationDto> relations;
+    private String insightNote;
 }

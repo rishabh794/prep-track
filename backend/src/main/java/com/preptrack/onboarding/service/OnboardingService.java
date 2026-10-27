@@ -46,6 +46,7 @@ public class OnboardingService {
     private final ApplicationRepository applicationRepository;
     private final InterviewRepository interviewRepository;
     private final EngineProperties policy;
+    private final com.preptrack.common.service.TimeService timeService;
 
     @Transactional
     public SheetSelectionResponse selectSheets(String email, SheetSelectionRequest request) {
@@ -116,8 +117,16 @@ public class OnboardingService {
         if (request.getTargetSkillLevel() != null) {
             settings.setTargetSkillLevel(request.getTargetSkillLevel());
         }
+        if (request.getTimezone() != null) {
+            String timezone = request.getTimezone().trim();
+            if (!java.time.ZoneId.getAvailableZoneIds().contains(timezone)) {
+                throw new BadRequestException("Timezone must be a valid IANA timezone, such as Asia/Kolkata");
+            }
+            settings.setTimezone(timezone);
+        }
 
         settings = userSettingsRepository.save(settings);
+        timeService.invalidateCalendar(user.getId());
 
         return UserSettingsDto.builder()
                 .dailyTimeBudgetMin(settings.getDailyTimeBudgetMin())
@@ -125,6 +134,7 @@ public class OnboardingService {
                 .maxRevisionsDay(settings.getMaxRevisionsDay())
                 .targetSkillLevel(settings.getTargetSkillLevel())
                 .onboardingComplete(settings.getOnboardingComplete())
+                .timezone(settings.getTimezone())
                 .build();
     }
 
@@ -179,6 +189,7 @@ public class OnboardingService {
                 .maxRevisionsDay(settings.getMaxRevisionsDay())
                 .targetSkillLevel(settings.getTargetSkillLevel())
                 .onboardingComplete(settings.getOnboardingComplete())
+                .timezone(settings.getTimezone())
                 .build();
     }
 }

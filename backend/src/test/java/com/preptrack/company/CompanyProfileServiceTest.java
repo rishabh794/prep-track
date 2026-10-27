@@ -59,7 +59,7 @@ class CompanyProfileServiceTest {
         policy.setInterviewProximityWindowDays(7);
         policy.setInterviewProximityMaxBoost(0.8);
         policy.setInterviewBoostDecayDays(4);
-        var calculator = new InterviewRelevanceCalculator(mock(InterviewRepository.class), profiles, policy);
+        var calculator = new InterviewRelevanceCalculator(mock(InterviewRepository.class), profiles, policy, mock(com.preptrack.common.service.TimeService.class));
         var pattern = Pattern.builder().id(1L).slug("two-pointer-squeeze").build();
         var today = LocalDate.of(2026, 10, 27);
 
