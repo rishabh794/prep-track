@@ -4,6 +4,8 @@ import com.preptrack.forecast.dto.PatternProjectionDto;
 import com.preptrack.forecast.dto.ReadinessForecastDto;
 import com.preptrack.forecast.dto.TriageStatus;
 import com.preptrack.forecast.engine.ForwardSimulator;
+import com.preptrack.forecast.config.ForecastProperties;
+import com.preptrack.config.EngineProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -263,5 +265,37 @@ class ForwardSimulatorTest {
         assertThat(hasDpAdvice).isTrue();
         assertThat(hasTrieAdvice).isTrue();
         assertThat(hasMaintenanceAdvice).isTrue();
+    }
+
+    @Test
+    void reportsEffectiveBudgetAndCappedHorizon() {
+        ForecastProperties properties = new ForecastProperties();
+        properties.setMaxHorizonDays(12);
+        var simulator = new ForwardSimulator(new EngineProperties(), properties);
+        var result = simulator.simulate(1L, LocalDate.now().plusDays(100), "Example", 100,
+                45, 1, 2, 0.6, List.of());
+        assertThat(result.getDailyBudgetMinutes()).isEqualTo(45);
+        assertThat(result.getMaxNewProblemsDay()).isEqualTo(1);
+        assertThat(result.getMaxRevisionsDay()).isEqualTo(2);
+        assertThat(result.getTargetSkillLevel()).isEqualTo(0.6);
+        assertThat(result.getSimulationDays()).isEqualTo(12);
+        assertThat(result.getHorizonCapped()).isTrue();
+        assertThat(result.getModel()).isEqualTo("PATTERN_APPROXIMATION");
+        assertThat(result.getLimitations()).anyMatch(message -> message.contains("not a replay"));
+    }
+
+    @Test
+    void zeroCapsAndCatalogTimeEstimatesAreRespected() {
+        var snapshot = ForwardSimulator.PatternSnapshot.builder().patternName("Example").currentSkill(0)
+                .currentStability(1).availableProblems(4).companyRelevance(1).estimatedProblemMinutes(45).build();
+        var noSlots = forwardSimulator.simulate(1L, LocalDate.now().plusDays(1), "Example", 1,
+                90, 0, 0, 0.8, List.of(snapshot));
+        var tooLittleTime = forwardSimulator.simulate(1L, LocalDate.now().plusDays(1), "Example", 1,
+                30, 3, 10, 0.8, List.of(snapshot));
+        var enoughTime = forwardSimulator.simulate(1L, LocalDate.now().plusDays(1), "Example", 1,
+                45, 3, 10, 0.8, List.of(snapshot));
+        assertThat(noSlots.getPatternProjections().getFirst().getProjectedSkill()).isZero();
+        assertThat(tooLittleTime.getPatternProjections().getFirst().getProjectedSkill()).isZero();
+        assertThat(enoughTime.getPatternProjections().getFirst().getProjectedSkill()).isEqualTo(0.1);
     }
 }

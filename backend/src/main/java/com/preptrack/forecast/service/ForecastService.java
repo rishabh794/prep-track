@@ -9,14 +9,15 @@ import com.preptrack.auth.entity.UserSettings;
 import com.preptrack.auth.repository.UserSettingsRepository;
 import com.preptrack.common.exception.ResourceNotFoundException;
 import com.preptrack.forecast.dto.ReadinessForecastDto;
+import com.preptrack.forecast.dto.ForecastStatus;
+import com.preptrack.config.EngineProperties;
+import com.preptrack.common.service.TimeService;
 import com.preptrack.forecast.engine.ForwardSimulator;
 import com.preptrack.pattern.entity.Pattern;
 import com.preptrack.pattern.entity.ProblemPattern;
 import com.preptrack.pattern.entity.UserPatternState;
-import com.preptrack.pattern.repository.PatternRepository;
 import com.preptrack.pattern.repository.ProblemPatternRepository;
 import com.preptrack.pattern.repository.UserPatternStateRepository;
-import com.preptrack.sheet.entity.SheetProblem;
 import com.preptrack.sheet.entity.UserSheet;
 import com.preptrack.sheet.repository.SheetProblemRepository;
 import com.preptrack.sheet.repository.UserSheetRepository;
@@ -42,9 +43,10 @@ public class ForecastService {
     private final SheetProblemRepository sheetProblemRepository;
     private final ProblemPatternRepository problemPatternRepository;
     private final UserProblemStatusRepository userProblemStatusRepository;
-    private final PatternRepository patternRepository;
     private final ForwardSimulator forwardSimulator;
     private final com.preptrack.planner.engine.InterviewRelevanceCalculator interviewRelevanceCalculator;
+    private final EngineProperties engine;
+    private final TimeService timeService;
 
     @Transactional(readOnly = true)
     public ReadinessForecastDto getForecastForInterview(Long userId, Long interviewId) {
@@ -56,40 +58,46 @@ public class ForecastService {
             throw new ResourceNotFoundException("Interview not found: " + interviewId);
         }
 
-        LocalDate today = LocalDate.now();
-        LocalDate interviewDate = interview.getInterviewDate();
-        long daysRemaining = 0;
-        if (interviewDate != null && !interviewDate.isBefore(today)) {
-            daysRemaining = ChronoUnit.DAYS.between(today, interviewDate);
-        }
-
-        String companyName = interview.getApplication().getCompanyName();
-
-        // 1. Fetch User Settings
         UserSettings settings = userSettingsRepository.findByUserId(userId)
                 .orElse(UserSettings.builder()
-                        .dailyTimeBudgetMin(90)
-                        .maxNewProblemsDay(3)
-                        .maxRevisionsDay(10)
-                        .targetSkillLevel(0.8)
+                        .dailyTimeBudgetMin(engine.getDefaultBudgetMinutes())
+                        .maxNewProblemsDay(engine.getDefaultMaxNewProblems())
+                        .maxRevisionsDay(engine.getDefaultMaxRevisions())
+                        .targetSkillLevel(engine.getDefaultTargetSkill())
                         .build());
+        LocalDate today = timeService.getLocalDate(settings);
+        LocalDate interviewDate = interview.getInterviewDate();
+        long daysRemaining = interviewDate == null ? 0 : Math.max(0, ChronoUnit.DAYS.between(today, interviewDate));
+        String companyName = interview.getApplication().getCompanyName();
+        int budget = settings.getDailyTimeBudgetMin() != null ? settings.getDailyTimeBudgetMin() : engine.getDefaultBudgetMinutes();
+        int maxNew = settings.getMaxNewProblemsDay() != null ? settings.getMaxNewProblemsDay() : engine.getDefaultMaxNewProblems();
+        int maxRev = settings.getMaxRevisionsDay() != null ? settings.getMaxRevisionsDay() : engine.getDefaultMaxRevisions();
+        double targetSkill = settings.getTargetSkillLevel() != null ? settings.getTargetSkillLevel() : engine.getDefaultTargetSkill();
 
-        int budget = settings.getDailyTimeBudgetMin() != null ? settings.getDailyTimeBudgetMin() : 90;
-        int maxNew = settings.getMaxNewProblemsDay() != null ? settings.getMaxNewProblemsDay() : 3;
-        int maxRev = settings.getMaxRevisionsDay() != null ? settings.getMaxRevisionsDay() : 10;
-        double targetSkill = settings.getTargetSkillLevel() != null ? settings.getTargetSkillLevel() : 0.8;
+        if (interviewDate == null || interviewDate.isBefore(today)) {
+            return unavailable(interview, today, daysRemaining, settings,
+                    interviewDate == null ? ForecastStatus.INSUFFICIENT_DATA : ForecastStatus.INTERVIEW_PASSED,
+                    interviewDate == null ? "Add an interview date to generate a forecast."
+                            : "This interview date has passed. Add a future interview to generate a readiness forecast.");
+        }
 
         // 2. Fetch User Pattern States
         List<UserPatternState> patternStates = userPatternStateRepository.findByUserIdWithPattern(userId);
-        Map<String, UserPatternState> stateByName = patternStates.stream()
+        Map<Long, UserPatternState> stateByPattern = patternStates.stream()
                 .filter(ps -> ps.getPattern() != null && ps.getPattern().getName() != null)
-                .collect(Collectors.toMap(ps -> ps.getPattern().getName(), ps -> ps, (a, b) -> a));
+                .collect(Collectors.toMap(ps -> ps.getPattern().getId(), ps -> ps, (a, b) -> a));
 
-        // 3. Find tracked problem IDs from user sheets (scalar lightweight query)
+        // 3. Load the distinct selected catalog with its actual problem time estimates.
         List<UserSheet> userSheets = userSheetRepository.findByUserIdWithSheet(userId);
         List<Long> sheetIds = userSheets.stream().map(us -> us.getSheet().getId()).toList();
-        Set<Long> problemIds = sheetIds.isEmpty() ? Collections.emptySet()
-                : sheetProblemRepository.findDistinctProblemIdsBySheetIdIn(sheetIds);
+        if (sheetIds.isEmpty()) {
+            return unavailable(interview, today, daysRemaining, settings, ForecastStatus.ONBOARDING_REQUIRED,
+                    "Select at least one problem sheet to generate a forecast.");
+        }
+        Map<Long, com.preptrack.problem.entity.Problem> problems = new LinkedHashMap<>();
+        sheetProblemRepository.findBySheetIdInOrderByDisplayOrderAsc(sheetIds)
+                .forEach(sp -> problems.putIfAbsent(sp.getProblem().getId(), sp.getProblem()));
+        Set<Long> problemIds = problems.keySet();
 
         // 4. Identify which problems user already solved
         List<UserProblemStatus> userStatuses = userProblemStatusRepository.findByUserId(userId);
@@ -99,47 +107,51 @@ public class ForecastService {
                 .collect(Collectors.toSet());
 
         // 5. Group available unsolved problems by pattern
-        Map<String, Integer> availableProblemsPerPattern = new HashMap<>();
-        Map<String, Pattern> allTargetPatterns = new LinkedHashMap<>();
+        Map<Long, Integer> availableProblemsPerPattern = new HashMap<>();
+        Map<Long, Pattern> allTargetPatterns = new TreeMap<>();
+        Map<Long, IntSummaryStatistics> problemMinutesPerPattern = new HashMap<>();
+        Set<Long> linkedProblems = new HashSet<>();
 
         if (!problemIds.isEmpty()) {
             List<ProblemPattern> pps = problemPatternRepository.findByProblemIdInWithPattern(new ArrayList<>(problemIds));
             for (ProblemPattern pp : pps) {
                 if (pp.getPattern() != null) {
-                    String pName = pp.getPattern().getName();
-                    allTargetPatterns.putIfAbsent(pName, pp.getPattern());
+                    Long patternId = pp.getPattern().getId();
+                    Long problemId = pp.getProblem().getId();
+                    allTargetPatterns.putIfAbsent(patternId, pp.getPattern());
+                    linkedProblems.add(problemId);
                     if (!solvedProblemIds.contains(pp.getProblem().getId())) {
-                        availableProblemsPerPattern.put(pName, availableProblemsPerPattern.getOrDefault(pName, 0) + 1);
+                        availableProblemsPerPattern.merge(patternId, 1, Integer::sum);
+                        Integer minutes = problems.get(problemId).getEstimatedMinutes();
+                        problemMinutesPerPattern.computeIfAbsent(patternId, ignored -> new IntSummaryStatistics())
+                                .accept(minutes != null && minutes > 0 ? minutes : engine.getDefaultProblemMinutes());
                     }
                 }
             }
         }
 
-        // Fallback: if user hasn't selected any sheets yet or no problems linked, load standard patterns
         if (allTargetPatterns.isEmpty()) {
-            List<Pattern> all = patternRepository.findAll();
-            for (Pattern p : all) {
-                allTargetPatterns.put(p.getName(), p);
-                availableProblemsPerPattern.put(p.getName(), 5);
-            }
+            return unavailable(interview, today, daysRemaining, settings, ForecastStatus.INSUFFICIENT_DATA,
+                    "Your selected sheets have no problems with pattern links. Select another sheet or update the catalog.");
         }
 
         // 6. Build pattern snapshots for simulator
         List<ForwardSimulator.PatternSnapshot> snapshots = new ArrayList<>();
-        for (Map.Entry<String, Pattern> entry : allTargetPatterns.entrySet()) {
-            String pName = entry.getKey();
-            UserPatternState state = stateByName.get(pName);
+        for (Map.Entry<Long, Pattern> entry : allTargetPatterns.entrySet()) {
+            String pName = entry.getValue().getName();
+            UserPatternState state = stateByPattern.get(entry.getKey());
 
             double curSkill = state != null && state.getSkill() != null ? state.getSkill() : 0.0;
-            double curStability = state != null && state.getStability() != null ? state.getStability() : 1.0;
+            double curStability = state != null && state.getStability() != null ? state.getStability() : engine.getInitialStability();
             Integer daysSincePractice = null;
             if (state != null && state.getLastPracticedAt() != null) {
                 daysSincePractice = (int) ChronoUnit.DAYS.between(state.getLastPracticedAt().toLocalDate(), today);
                 if (daysSincePractice < 0) daysSincePractice = 0;
             }
 
-            int available = availableProblemsPerPattern.getOrDefault(pName, 0);
-            double companyRelevance = calculateCompanyPatternRelevance(companyName, pName);
+            int available = availableProblemsPerPattern.getOrDefault(entry.getKey(), 0);
+            double companyRelevance = interviewRelevanceCalculator.calculateCompanyPatternRelevance(companyName, entry.getValue());
+            IntSummaryStatistics minutes = problemMinutesPerPattern.get(entry.getKey());
 
             snapshots.add(ForwardSimulator.PatternSnapshot.builder()
                     .patternName(pName)
@@ -148,11 +160,12 @@ public class ForecastService {
                     .daysSinceLastPracticed(daysSincePractice)
                     .availableProblems(available)
                     .companyRelevance(companyRelevance)
+                    .estimatedProblemMinutes(minutes == null ? engine.getDefaultProblemMinutes() : (int) Math.ceil(minutes.getAverage()))
                     .build());
         }
 
         // 7. Run forward simulation
-        return forwardSimulator.simulate(
+        ReadinessForecastDto result = forwardSimulator.simulate(
                 interviewId,
                 interviewDate,
                 companyName,
@@ -163,9 +176,33 @@ public class ForecastService {
                 targetSkill,
                 snapshots
         );
+        result.setAsOfDate(today);
+        result.setProjectedThroughDate(today.plusDays(result.getSimulationDays()));
+        result.setStatusMessage("Approximate readiness based on your selected sheets and current study settings.");
+        List<String> limitations = new ArrayList<>(result.getLimitations());
+        if (linkedProblems.size() < problems.size()) {
+            limitations.add((problems.size() - linkedProblems.size()) + " selected problems have no pattern links and are excluded.");
+        }
+        if (Boolean.TRUE.equals(result.getHorizonCapped())) {
+            limitations.add("The simulation stops after " + result.getSimulationDays() + " days; the projection is not for the full interview horizon.");
+        }
+        result.setLimitations(List.copyOf(limitations));
+        return result;
     }
 
-    private double calculateCompanyPatternRelevance(String companyName, String patternName) {
-        return interviewRelevanceCalculator.calculateCompanyPatternRelevance(companyName, patternName);
+    private ReadinessForecastDto unavailable(Interview interview, LocalDate today, long daysRemaining,
+                                             UserSettings settings, ForecastStatus status, String message) {
+        return ReadinessForecastDto.builder()
+                .interviewId(interview.getId()).interviewDate(interview.getInterviewDate())
+                .companyName(interview.getApplication().getCompanyName()).daysRemaining(daysRemaining)
+                .status(status).statusMessage(message).overallReadiness(null)
+                .dailyBudgetMinutes(settings.getDailyTimeBudgetMin() != null ? settings.getDailyTimeBudgetMin() : engine.getDefaultBudgetMinutes())
+                .maxNewProblemsDay(settings.getMaxNewProblemsDay() != null ? settings.getMaxNewProblemsDay() : engine.getDefaultMaxNewProblems())
+                .maxRevisionsDay(settings.getMaxRevisionsDay() != null ? settings.getMaxRevisionsDay() : engine.getDefaultMaxRevisions())
+                .targetSkillLevel(settings.getTargetSkillLevel() != null ? settings.getTargetSkillLevel() : engine.getDefaultTargetSkill())
+                .simulationDays(0).asOfDate(today).projectedThroughDate(today).horizonCapped(false)
+                .model(ForwardSimulator.MODEL).modelVersion(ForwardSimulator.MODEL_VERSION)
+                .policyVersion(engine.getPolicyVersion())
+                .limitations(ForwardSimulator.LIMITATIONS).patternProjections(List.of()).recommendations(List.of(message)).build();
     }
 }

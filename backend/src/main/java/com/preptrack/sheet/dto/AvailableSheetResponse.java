@@ -15,4 +15,7 @@ public class AvailableSheetResponse {
     private String description;
     private String sourceUrl;
     private long totalProblems;
+    private Integer expectedProblems;
+    private com.preptrack.catalog.CatalogCountStatus countStatus;
+    private String seedVersion;
 }

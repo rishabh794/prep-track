@@ -1,6 +1,8 @@
 package com.preptrack.simulator;
 
 import com.preptrack.application.repository.InterviewRepository;
+import com.preptrack.company.service.CompanyProfileService;
+import com.preptrack.config.EngineProperties;
 import com.preptrack.attempt.entity.AttemptOutcome;
 import com.preptrack.pattern.entity.*;
 import com.preptrack.pattern.repository.*;
@@ -17,11 +19,12 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 
 class SimulationEngineTest {
-    private final InterviewRelevanceCalculator relevance = new InterviewRelevanceCalculator(mock(InterviewRepository.class));
+    private final EngineProperties policy = new EngineProperties();
+    private final InterviewRelevanceCalculator relevance = new InterviewRelevanceCalculator(mock(InterviewRepository.class), mock(CompanyProfileService.class), policy);
     private final PrepTrackStrategy strategy = new PrepTrackStrategy(
-            new AcquisitionScorer(mock(ProblemPatternRepository.class), mock(UserPatternStateRepository.class), relevance),
-            new MaintenanceScorer(mock(ProblemPatternRepository.class), mock(UserPatternStateRepository.class), new RetentionCalculator(), relevance),
-            new KnapsackSolver(), new RevisionTimeEstimator());
+            new AcquisitionScorer(mock(ProblemPatternRepository.class), mock(UserPatternStateRepository.class), relevance, policy),
+            new MaintenanceScorer(mock(ProblemPatternRepository.class), mock(UserPatternStateRepository.class), new RetentionCalculator(), relevance, policy),
+            new KnapsackSolver(), new RevisionTimeEstimator(policy));
 
     private SimulationCatalog catalog() {
         var patterns = new ArrayList<Pattern>();
@@ -70,12 +73,14 @@ class SimulationEngineTest {
 
     @Test
     void runsAllEightCombinationsReproduciblyWithoutForcingAWinner() {
-        var engine = new SimulationEngine(strategy);
+        var engine = new SimulationEngine(strategy, policy);
         var config = new SimulationConfig(12, 5, 60, 2, 4, 0.8, 42L, null);
         var result = engine.run(config, catalog());
         var repeat = engine.run(config, catalog());
         assertThat(result.results()).hasSize(8).isEqualTo(repeat.results());
         assertThat(result.comparisons()).hasSize(6).isEqualTo(repeat.comparisons());
+        assertThat(result.enginePolicy()).isNotSameAs(policy);
+        assertThat(result.enginePolicy().getRecallMinutes()).isEqualTo(policy.getRecallMinutes());
         result.results().forEach(row -> {
             assertThat(row.retention().mean()).isBetween(0.0, 1.0);
             assertThat(row.retainedSkill().mean()).isBetween(0.0, row.retention().mean());
@@ -85,6 +90,8 @@ class SimulationEngineTest {
         });
         result.comparisons().forEach(c -> assertThat(c.prepTrackHigher()).isEqualTo(c.retentionDifference() > 0));
         assertThat(result.textSummary()).contains("Caveat:", "POWER_LAW", "seed 42");
+        policy.setRecallMinutes(9);
+        assertThat(result.enginePolicy().getRecallMinutes()).isEqualTo(5);
     }
 
     @Test

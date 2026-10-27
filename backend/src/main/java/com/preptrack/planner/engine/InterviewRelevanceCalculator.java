@@ -4,6 +4,8 @@ import com.preptrack.application.entity.Interview;
 import com.preptrack.application.entity.InterviewOutcome;
 import com.preptrack.application.repository.InterviewRepository;
 import com.preptrack.pattern.entity.Pattern;
+import com.preptrack.company.service.CompanyProfileService;
+import com.preptrack.config.EngineProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +22,8 @@ import java.util.List;
 public class InterviewRelevanceCalculator {
 
     private final InterviewRepository interviewRepository;
+    private final CompanyProfileService companyProfiles;
+    private final EngineProperties policy;
 
     @Data
     @Builder
@@ -52,7 +56,8 @@ public class InterviewRelevanceCalculator {
             }
         }
 
-        if (nearest == null || minDays > 14) {
+        int proximityWindow = policy.getInterviewProximityWindowDays();
+        if (nearest == null || minDays > proximityWindow) {
             return InterviewContext.builder()
                     .relevanceMultiplier(1.0)
                     .daysRemaining(null)
@@ -62,11 +67,10 @@ public class InterviewRelevanceCalculator {
 
         String company = nearest.getApplication() != null ? nearest.getApplication().getCompanyName() : "Upcoming";
         double companyRelevance = (pattern != null && company != null)
-                ? calculateCompanyPatternRelevance(company, pattern.getName())
+                ? calculateCompanyPatternRelevance(company, pattern)
                 : 1.0;
-        // Proximity boost: closer to interview (within 14 days) gives higher relevance
-        double boost = 0.5;
-        double relevance = companyRelevance * (1.0 + boost * ((14.0 - (double) minDays) / 14.0));
+        double boost = policy.getInterviewProximityMaxBoost();
+        double relevance = companyRelevance * (1.0 + boost * ((proximityWindow - (double) minDays) / proximityWindow));
 
         return InterviewContext.builder()
                 .relevanceMultiplier(Math.round(relevance * 100.0) / 100.0)
@@ -76,40 +80,11 @@ public class InterviewRelevanceCalculator {
     }
 
     public double calculateCompanyPatternRelevance(String companyName, String patternName) {
-        String company = companyName != null ? companyName.toLowerCase().trim() : "";
-        String pattern = patternName != null ? patternName.toLowerCase() : "";
+        return companyProfiles.relevance(companyName, patternName);
+    }
 
-        // Low-frequency patterns for specific companies
-        if (company.contains("google")) {
-            if (pattern.contains("trie") || pattern.contains("bit manipulation")) {
-                return 0.4;
-            }
-            if (pattern.contains("dp") || pattern.contains("pointer") || pattern.contains("window")
-                    || pattern.contains("graph") || pattern.contains("stack")) {
-                return 1.2;
-            }
-        } else if (company.contains("meta") || company.contains("facebook")) {
-            if (pattern.contains("trie")) {
-                return 0.4;
-            }
-            if (pattern.contains("pointer") || pattern.contains("window") || pattern.contains("tree")) {
-                return 1.2;
-            }
-        } else if (company.contains("amazon")) {
-            if (pattern.contains("bit manipulation")) {
-                return 0.4;
-            }
-            if (pattern.contains("bfs") || pattern.contains("dfs") || pattern.contains("heap") || pattern.contains("topological")) {
-                return 1.2;
-            }
-        }
-
-        // Generic tech company low-frequency patterns
-        if (pattern.contains("trie") || pattern.contains("bit manipulation")) {
-            return 0.5;
-        }
-
-        return 1.0;
+    public double calculateCompanyPatternRelevance(String companyName, Pattern pattern) {
+        return companyProfiles.relevance(companyName, pattern);
     }
 
     public double getEffectiveInterviewBoost(com.preptrack.pattern.entity.UserPatternState state, LocalDate currentDate) {
@@ -118,10 +93,11 @@ public class InterviewRelevanceCalculator {
         }
         LocalDate setDate = state.getInterviewBoostSetAt().toLocalDate();
         long daysSince = ChronoUnit.DAYS.between(setDate, currentDate);
-        if (daysSince >= 14 || daysSince < 0) {
+        int decayDays = policy.getInterviewBoostDecayDays();
+        if (daysSince >= decayDays || daysSince < 0) {
             return 0.0;
         }
-        double decayFactor = (14.0 - (double) daysSince) / 14.0;
+        double decayFactor = (decayDays - (double) daysSince) / decayDays;
         return Math.round(state.getInterviewBoost() * decayFactor * 100.0) / 100.0;
     }
 }

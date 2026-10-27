@@ -50,7 +50,9 @@ gemini:
 preptrack:
   seed:
     enabled: ${PREPTRACK_SEED_ENABLED:true}
+    manifest: seed/catalog-manifest.json
   engine:
+    policy-version: "1"
     default-budget-minutes: 90
     default-max-new-problems: 3
     default-max-revisions: 10
@@ -58,4 +60,25 @@ preptrack:
     maintenance-floor: 0.15
     diversity-multiplier: 0.5
     retry-boost-multiplier: 2.0
+    independent-solve-skill-gain: 0.10
+    with-help-skill-gain: 0.03
+    could-not-solve-skill-decay: 0.02
+    independent-solve-stability-multiplier: 1.5
+    with-help-stability-multiplier: 1.0
+    failure-stability-multiplier: 0.5
+    recall-minutes: 5
+    default-problem-minutes: 30
+    revision-intervals: [3, 7, 14, 30]
+    revision-retention-target: 0.70
+    interview-proximity-window-days: 14
+    interview-proximity-max-boost: 0.5
+    interview-boost-decay-days: 14
+    topic-confirmed-boost: 0.3
+    max-interview-boost: 0.6
+  forecast:
+    max-horizon-days: 60
+    review-trigger-retention: 0.70
+    revision-skill-gain: 0.02
+    revision-stability-multiplier: 1.45
+    new-problem-stability-multiplier: 1.40
 

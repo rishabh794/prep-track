@@ -16,6 +16,7 @@ import com.preptrack.sheet.entity.UserSheet;
 import com.preptrack.sheet.repository.*;
 import com.preptrack.simulator.dto.SimulationConfig;
 import com.preptrack.simulator.engine.*;
+import com.preptrack.config.EngineProperties;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,6 +45,7 @@ public class DemoDataService {
     private final InterviewRepository interviews;
     private final EntityManager entityManager;
     private final Clock clock;
+    private final EngineProperties policy;
 
     /** Explicit opt-in only; never overwrites an existing account. All history is marked synthetic. */
     @Transactional
@@ -61,7 +63,7 @@ public class DemoDataService {
         LocalDate today = LocalDate.now(clock.withZone(ZoneId.of("Asia/Kolkata")));
         LocalDate firstDay = today.minusDays(10);
         var config = new SimulationConfig(10, 1, 90, 3, 10, 0.8, 42L, sheet.getId());
-        var learner = new SyntheticLearner(catalog, new ExponentialForgetting(), config.seed());
+        var learner = new SyntheticLearner(catalog, new ExponentialForgetting(), config.seed(), policy);
         Map<Long, UserProblemStatus> statusMap = new HashMap<>();
         Map<Long, LocalDateTime> attemptDates = new LinkedHashMap<>();
         Map<Long, LocalDateTime> planDates = new LinkedHashMap<>();

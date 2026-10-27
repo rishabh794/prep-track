@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "profiles": [
+    {
+      "slug": "google",
+      "name": "Google",
+      "aliases": ["google", "google llc"],
+      "provenance": "HEURISTIC",
+      "sourceNotes": "Migrated from PrepTrack's original manually assigned weights. These are demonstration heuristics, not measured company interview frequencies.",
+      "patternWeights": {
+        "two-pointer-squeeze": 1.2,
+        "fast-slow-pointers": 1.2,
+        "sliding-window-fixed": 1.2,
+        "sliding-window-variable": 1.2,
+        "monotonic-stack": 1.2,
+        "trie-prefix-matching": 0.4,
+        "dp-kadanes": 1.2,
+        "dp-1d-linear": 1.2,
+        "dp-lis": 1.2,
+        "dp-01-knapsack": 1.2,
+        "dp-unbounded-knapsack": 1.2,
+        "dp-2d-grid": 1.2,
+        "dp-string-lcs": 1.2,
+        "bit-manipulation-tricks": 0.4
+      }
+    },
+    {
+      "slug": "meta",
+      "name": "Meta",
+      "aliases": ["meta", "facebook", "meta platforms", "meta platforms inc"],
+      "provenance": "HEURISTIC",
+      "sourceNotes": "Migrated from PrepTrack's original manually assigned weights. These are demonstration heuristics, not measured company interview frequencies.",
+      "patternWeights": {
+        "two-pointer-squeeze": 1.2,
+        "fast-slow-pointers": 1.2,
+        "sliding-window-fixed": 1.2,
+        "sliding-window-variable": 1.2,
+        "dfs-tree-traversal": 1.2,
+        "trie-prefix-matching": 0.4,
+        "bit-manipulation-tricks": 0.5
+      }
+    },
+    {
+      "slug": "amazon",
+      "name": "Amazon",
+      "aliases": ["amazon", "amazon.com"],
+      "provenance": "HEURISTIC",
+      "sourceNotes": "Migrated from PrepTrack's original manually assigned weights. These are demonstration heuristics, not measured company interview frequencies.",
+      "patternWeights": {
+        "bfs-level-order": 1.2,
+        "dfs-tree-traversal": 1.2,
+        "top-k-elements-heap": 1.2,
+        "two-heaps": 1.2,
+        "bfs-shortest-path": 1.2,
+        "dfs-cycle-detection": 1.2,
+        "topological-sort-kahns": 1.2,
+        "trie-prefix-matching": 0.5,
+        "bit-manipulation-tricks": 0.4
+      }
+    }
+  ]
+}

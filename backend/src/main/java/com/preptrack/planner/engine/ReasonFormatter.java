@@ -3,10 +3,14 @@ package com.preptrack.planner.engine;
 import com.preptrack.planner.dto.PatternContribution;
 import com.preptrack.planner.dto.ValueBreakdown;
 import com.preptrack.planner.entity.PlanItemType;
+import com.preptrack.config.EngineProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class ReasonFormatter {
+    private final EngineProperties policy;
 
     public String format(PlanCandidate item, double targetSkillLevel) {
         ValueBreakdown breakdown = item.getValueBreakdown();
@@ -42,7 +46,7 @@ public class ReasonFormatter {
             reason.append(item.getProblem() != null ? item.getProblem().getCanonicalTitle() : "Problem");
         }
 
-        if (item.getInterviewDays() != null && item.getInterviewDays() <= 14) {
+        if (item.getInterviewDays() != null && item.getInterviewDays() <= policy.getInterviewProximityWindowDays()) {
             reason.append(". ")
                     .append(item.getInterviewCompany() != null ? item.getInterviewCompany() : "Interview")
                     .append(" interview in ")

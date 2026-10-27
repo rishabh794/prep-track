@@ -1,5 +1,7 @@
 package com.preptrack.planner.engine;
 
+import com.preptrack.config.EngineProperties;
+
 import com.preptrack.application.entity.Interview;
 import com.preptrack.application.entity.InterviewOutcome;
 import com.preptrack.application.repository.InterviewRepository;
@@ -45,6 +47,7 @@ public class CandidateCollector {
     private final MaintenanceScorer maintenanceScorer;
     private final RevisionTimeEstimator revisionTimeEstimator;
     private final FollowUpAssigner followUpAssigner;
+    private final EngineProperties policy;
 
     public List<PlanCandidate> collectCandidates(Long userId, double targetLevel, LocalDate planDate) {
         List<PlanCandidate> candidates = new ArrayList<>();
@@ -134,7 +137,7 @@ public class CandidateCollector {
                     patternTotalInSheets, patternSolvedInSheets
             );
 
-            int time = p.getEstimatedMinutes() != null ? p.getEstimatedMinutes() : 30;
+            int time = p.getEstimatedMinutes() != null ? p.getEstimatedMinutes() : policy.getDefaultProblemMinutes();
 
             candidates.add(PlanCandidate.builder()
                     .problem(p)
@@ -232,7 +235,7 @@ public class CandidateCollector {
                     scheduledNewPrimaryPatterns.add(scored.primaryPatternId);
                 }
 
-                int time = p.getEstimatedMinutes() != null ? p.getEstimatedMinutes() : 30;
+                int time = p.getEstimatedMinutes() != null ? p.getEstimatedMinutes() : policy.getDefaultProblemMinutes();
 
                 candidates.add(PlanCandidate.builder()
                         .problem(p)

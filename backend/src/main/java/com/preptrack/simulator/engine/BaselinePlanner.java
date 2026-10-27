@@ -26,8 +26,8 @@ public final class BaselinePlanner implements PlannerStrategy {
                 Card card = learner.cards().get(problem.getId());
                 boolean recall = card.followUp == null;
                 int full = problem.getEstimatedMinutes();
-                int cost = recall ? 5 : card.outcome == AttemptOutcome.COULD_NOT_SOLVE ? full : switch (card.followUp) {
-                    case EDGE_CASE_LIST -> Math.max(10, full / 2);
+                int cost = recall ? learner.policy().getRecallMinutes() : card.outcome == AttemptOutcome.COULD_NOT_SOLVE ? full : switch (card.followUp) {
+                    case EDGE_CASE_LIST -> Math.max(learner.policy().getEdgeCaseMinimumMinutes(), (int) (full * learner.policy().getEdgeCaseTimeFraction()));
                     default -> full;
                 };
                 if (reviews < config.maxRevisions() && cost <= remaining) {

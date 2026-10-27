@@ -2,6 +2,7 @@ package com.preptrack.pattern.service;
 
 import com.preptrack.attempt.entity.AttemptOutcome;
 import com.preptrack.auth.entity.User;
+import com.preptrack.config.EngineProperties;
 import com.preptrack.pattern.dto.PatternUpdateDto;
 import com.preptrack.pattern.entity.Pattern;
 import com.preptrack.pattern.entity.ProblemPattern;
@@ -33,6 +34,7 @@ public class PatternStateService {
     private final ProblemPatternRepository problemPatternRepository;
     private final PatternRepository patternRepository;
     private final RetentionCalculator retentionCalculator;
+    private final EngineProperties policy;
 
     @Transactional
     public UserPatternState getOrCreatePatternState(User user, Pattern pattern) {
@@ -42,7 +44,7 @@ public class PatternStateService {
                             .user(user)
                             .pattern(pattern)
                             .skill(0.0)
-                            .stability(1.0)
+                            .stability(policy.getInitialStability())
                             .lastPracticedAt(null)
                             .totalAttempts(0)
                             .independentSolves(0)
@@ -64,7 +66,7 @@ public class PatternStateService {
 
             UserPatternState state = getOrCreatePatternState(user, pattern);
             double skillBefore = state.getSkill() != null ? state.getSkill() : 0.0;
-            PatternLearningModel.apply(state, outcome, linkWeight, false, now);
+            PatternLearningModel.apply(state, outcome, linkWeight, false, now, policy);
 
             UserPatternState saved = userPatternStateRepository.save(state);
 
@@ -97,7 +99,7 @@ public class PatternStateService {
                 case PARTIAL -> AttemptOutcome.SOLVED_WITH_HELP;
                 case FAIL -> AttemptOutcome.COULD_NOT_SOLVE;
             };
-            PatternLearningModel.apply(state, observedOutcome, linkWeight, true, now);
+            PatternLearningModel.apply(state, observedOutcome, linkWeight, true, now, policy);
 
             UserPatternState saved = userPatternStateRepository.save(state);
 
@@ -128,7 +130,7 @@ public class PatternStateService {
         return allPatterns.stream().map(p -> {
             UserPatternState state = stateMap.get(p.getId());
             double skill = state != null && state.getSkill() != null ? state.getSkill() : 0.0;
-            double stability = state != null && state.getStability() != null ? state.getStability() : 1.0;
+            double stability = state != null && state.getStability() != null ? state.getStability() : policy.getInitialStability();
             double retention = retentionCalculator.compute(state != null ? state.getLastPracticedAt() : null, stability);
 
             return PatternStateResponseDto.builder()

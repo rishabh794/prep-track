@@ -49,6 +49,9 @@ public class SheetService {
                 .description(s.getDescription())
                 .sourceUrl(s.getSourceUrl())
                 .totalProblems(countsBySheet.getOrDefault(s.getId(), 0L))
+                .expectedProblems(s.getExpectedProblemCount())
+                .countStatus(com.preptrack.catalog.CatalogCountStatus.compare(countsBySheet.getOrDefault(s.getId(), 0L), s.getExpectedProblemCount()))
+                .seedVersion(s.getSeedVersion())
                 .build()
         ).collect(Collectors.toList());
     }

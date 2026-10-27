@@ -5,6 +5,8 @@ import com.preptrack.pattern.entity.UserPatternState;
 import com.preptrack.pattern.service.PatternLearningModel;
 import com.preptrack.problem.entity.Problem;
 import com.preptrack.revision.entity.FollowUpType;
+import com.preptrack.config.EngineProperties;
+import com.preptrack.revision.service.RevisionSchedulingPolicy;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -33,6 +35,7 @@ public final class SyntheticLearner {
     private final long seed;
     private final double learningRate;
     private final double initialStability;
+    private final EngineProperties policy;
     private final Map<Long, Memory> memory = new HashMap<>();
     private final Map<Long, UserPatternState> estimates = new HashMap<>();
     private final Map<Long, Card> cards = new HashMap<>();
@@ -40,15 +43,20 @@ public final class SyntheticLearner {
     private int minutesStudied;
 
     public SyntheticLearner(SimulationCatalog catalog, ForgettingCurve curve, long seed) {
+        this(catalog, curve, seed, new EngineProperties());
+    }
+
+    public SyntheticLearner(SimulationCatalog catalog, ForgettingCurve curve, long seed, EngineProperties policy) {
         this.catalog = catalog;
         this.curve = curve;
         this.seed = seed;
+        this.policy = policy;
         Random parameters = new Random(seed);
         learningRate = Math.exp(-2.3 + 0.5 * parameters.nextGaussian());
         initialStability = Math.exp(0.5 * parameters.nextGaussian());
         for (var pattern : catalog.patterns()) {
             memory.put(pattern.getId(), new Memory(initialStability));
-            estimates.put(pattern.getId(), UserPatternState.builder().pattern(pattern).build());
+            estimates.put(pattern.getId(), UserPatternState.builder().pattern(pattern).stability(policy.getInitialStability()).build());
         }
     }
 
@@ -88,7 +96,7 @@ public final class SyntheticLearner {
             m.stability = Math.min(365, m.stability * (1 + learningRate * feedback * (item.recallOnly() ? 4 : 2)));
             m.lastDay = day;
             PatternLearningModel.apply(estimates.get(link.getPattern().getId()), outcome, weight,
-                    item.recallOnly(), EPOCH.plusDays(day).atStartOfDay());
+                    item.recallOnly(), EPOCH.plusDays(day).atStartOfDay(), policy);
         }
         boolean firstReview = !cards.containsKey(item.problem().getId());
         Card card = cards.computeIfAbsent(item.problem().getId(), ignored -> new Card());
@@ -100,9 +108,7 @@ public final class SyntheticLearner {
         card.outcome = outcome;
         card.followUp = followUp;
         double minStability = links.stream().mapToDouble(p -> estimates.get(p.getPattern().getId()).getStability()).min().orElse(1);
-        int countInterval = card.reviews == 1 ? 3 : card.reviews == 2 ? 7 : card.reviews == 3 ? 14 : 30;
-        card.dueDay = day + (outcome == AttemptOutcome.SOLVED_INDEPENDENTLY
-                ? (firstReview ? 3 : Math.max(1, Math.min(countInterval, (int) Math.round(-Math.log(0.7) * minStability)))) : 1);
+        card.dueDay = day + new RevisionSchedulingPolicy(policy).intervalDays(outcome, card.reviews, firstReview, minStability);
         if (outcome != AttemptOutcome.COULD_NOT_SOLVE) solved.add(item.problem().getId());
         minutesStudied += item.minutes();
         return new Observation(day, item, outcome, followUp);
@@ -121,6 +127,7 @@ public final class SyntheticLearner {
     public int minutesStudied() { return minutesStudied; }
     public double learningRate() { return learningRate; }
     public double initialStability() { return initialStability; }
+    public EngineProperties policy() { return policy; }
     public Map<Long, UserPatternState> estimates() { return estimates; }
     public Map<Long, Card> cards() { return cards; }
     private static double clamp(double value) { return Math.max(0, Math.min(1, value)); }

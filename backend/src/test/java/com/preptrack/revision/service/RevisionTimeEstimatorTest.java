@@ -1,5 +1,7 @@
 package com.preptrack.revision.service;
 
+import com.preptrack.config.EngineProperties;
+
 import com.preptrack.problem.entity.Problem;
 import com.preptrack.revision.entity.FollowUpType;
 import com.preptrack.revision.entity.RevisionCard;
@@ -10,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class RevisionTimeEstimatorTest {
 
-    private final RevisionTimeEstimator estimator = new RevisionTimeEstimator();
+    private final RevisionTimeEstimator estimator = new RevisionTimeEstimator(new EngineProperties());
 
     @Test
     @DisplayName("Recall-only revision returns 5 minutes")

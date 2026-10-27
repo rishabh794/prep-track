@@ -2,6 +2,7 @@ package com.preptrack.simulator.engine;
 
 import com.preptrack.simulator.dto.SimulationConfig;
 import com.preptrack.simulator.dto.SimulationResult;
+import com.preptrack.config.EngineProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import java.time.Instant;
@@ -12,6 +13,7 @@ import static com.preptrack.simulator.dto.SimulationResult.*;
 @RequiredArgsConstructor
 public class SimulationEngine {
     private final PrepTrackStrategy prepTrack;
+    private final EngineProperties policy;
     public static final String MODEL_VERSION = "1.0";
     public static final List<String> CAVEATS = List.of(
             "These results compare planners under stated forgetting-curve assumptions with distribution-sampled learner parameters. Real humans vary; synthetic results do not establish a real-world advantage.",
@@ -35,7 +37,7 @@ public class SimulationEngine {
                 double[] coverage = new double[config.learnerCount()];
                 double[] minutes = new double[config.learnerCount()];
                 for (int l = 0; l < config.learnerCount(); l++) {
-                    SyntheticLearner learner = new SyntheticLearner(catalog, curve, config.seed() + l * 104729L);
+                    SyntheticLearner learner = new SyntheticLearner(catalog, curve, config.seed() + l * 104729L, policy);
                     for (int day = 1; day <= config.days(); day++) {
                         var plan = strategy.generatePlan(catalog, learner, config, day);
                         int spent = plan.stream().mapToInt(SyntheticLearner.StudyItem::minutes).sum();
@@ -71,11 +73,13 @@ public class SimulationEngine {
                 }
             });
         }
+        EngineProperties policySnapshot = policy.snapshot();
         StringBuilder report = new StringBuilder(String.format(Locale.ROOT,
                 "PrepTrack simulator v%s%n%d days; %d paired learners; %d min/day; seed %d; %s (%d problems, %d patterns)%n"
                         + "Retention: mean ± sample standard deviation; evaluated 24h after study.%n",
                 MODEL_VERSION, config.days(), config.learnerCount(), config.dailyBudgetMinutes(), config.seed(),
                 catalog.sheetName(), catalog.problems().size(), catalog.patterns().size()));
+        report.append("Engine policy parameters: ").append(policySnapshot).append('\n');
         for (StrategyResult result : results) {
             report.append(String.format(Locale.ROOT, "%s / %s: retention %.2f%% ± %.2f%%; retained skill %.2f%%; coverage %.2f%%; minutes %.1f%n",
                     result.forgettingCurve(), result.strategy(), result.retention().mean() * 100, result.retention().stdDev() * 100,
@@ -88,7 +92,7 @@ public class SimulationEngine {
         }
         CAVEATS.forEach(c -> report.append("\nCaveat: ").append(c));
         return new SimulationResult(UUID.randomUUID(), Instant.now(), MODEL_VERSION, config, catalog.sheetName(),
-                catalog.problems().size(), catalog.patterns().size(), List.copyOf(results), List.copyOf(comparisons), CAVEATS, report.toString());
+                catalog.problems().size(), catalog.patterns().size(), List.copyOf(results), List.copyOf(comparisons), CAVEATS, policySnapshot, report.toString());
     }
 
     public static Metric metric(double[] values) {

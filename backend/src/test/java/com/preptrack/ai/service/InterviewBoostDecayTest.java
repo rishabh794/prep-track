@@ -3,6 +3,8 @@ package com.preptrack.ai.service;
 import com.preptrack.application.repository.InterviewRepository;
 import com.preptrack.pattern.entity.UserPatternState;
 import com.preptrack.planner.engine.InterviewRelevanceCalculator;
+import com.preptrack.company.service.CompanyProfileService;
+import com.preptrack.config.EngineProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class InterviewBoostDecayTest {
@@ -23,7 +26,7 @@ class InterviewBoostDecayTest {
     @Test
     @DisplayName("Interview boost decays linearly over 14 days and drops to 0 afterwards")
     void testInterviewBoostDecay() {
-        InterviewRelevanceCalculator calculator = new InterviewRelevanceCalculator(interviewRepository);
+        InterviewRelevanceCalculator calculator = new InterviewRelevanceCalculator(interviewRepository, mock(CompanyProfileService.class), new EngineProperties());
 
         LocalDate today = LocalDate.of(2026, 11, 15);
 

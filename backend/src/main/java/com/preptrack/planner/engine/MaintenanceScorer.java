@@ -9,6 +9,7 @@ import com.preptrack.planner.dto.PatternContribution;
 import com.preptrack.planner.dto.ValueBreakdown;
 import com.preptrack.problem.entity.Problem;
 import com.preptrack.revision.entity.FollowUpType;
+import com.preptrack.config.EngineProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -22,12 +23,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MaintenanceScorer {
 
-    public static final double MAINTENANCE_FLOOR = 0.15;
-
     private final ProblemPatternRepository problemPatternRepository;
     private final UserPatternStateRepository userPatternStateRepository;
     private final RetentionCalculator retentionCalculator;
     private final InterviewRelevanceCalculator interviewRelevanceCalculator;
+    private final EngineProperties policy;
 
     public static class ScoredResult {
         public double value;
@@ -98,7 +98,7 @@ public class MaintenanceScorer {
 
             UserPatternState state = stateMap != null ? stateMap.get(pattern.getId()) : null;
             double skill = (state != null && state.getSkill() != null) ? state.getSkill() : 0.0;
-            double stability = (state != null && state.getStability() != null) ? state.getStability() : 1.0;
+            double stability = (state != null && state.getStability() != null) ? state.getStability() : policy.getInitialStability();
             int solves = (state != null && state.getIndependentSolves() != null) ? state.getIndependentSolves() : 0;
 
             double retention = retentionCalculator.compute(
@@ -116,7 +116,7 @@ public class MaintenanceScorer {
             double totalRelevance = relevance + effectiveBoost;
 
             // Maintenance floor: max(0.15, target - skill)
-            double maintenanceNeed = Math.max(MAINTENANCE_FLOOR, targetLevel - skill) * totalRelevance;
+            double maintenanceNeed = Math.max(policy.getMaintenanceFloor(), targetLevel - skill) * totalRelevance;
             double forgettingFactor = Math.max(0.0, 1.0 - retention);
 
             double contrib = weight * maintenanceNeed * forgettingFactor;
@@ -142,16 +142,16 @@ public class MaintenanceScorer {
                     .build());
         }
 
-        double retryMultiplier = isRetry ? 2.0 : 1.0;
+        double retryMultiplier = isRetry ? policy.getRetryBoostMultiplier() : 1.0;
         sumValue *= retryMultiplier;
 
         double followUpMultiplier = 1.0;
         if (followUpType != null) {
             followUpMultiplier = switch (followUpType) {
-                case EASIER_PREREQUISITE -> 0.8;
-                case CODE_FROM_SCRATCH -> 1.5;
-                case EDGE_CASE_LIST -> 1.2;
-                case TIMED_RETRY -> 1.3;
+                case EASIER_PREREQUISITE -> policy.getPrerequisiteMultiplier();
+                case CODE_FROM_SCRATCH -> policy.getCodeFromScratchMultiplier();
+                case EDGE_CASE_LIST -> policy.getEdgeCaseMultiplier();
+                case TIMED_RETRY -> policy.getTimedRetryMultiplier();
             };
             sumValue *= followUpMultiplier;
         }
@@ -159,7 +159,7 @@ public class MaintenanceScorer {
         // Overdue age bonus for due revisions
         if (!isRetry && nextReviewDate != null && planDate != null && nextReviewDate.isBefore(planDate)) {
             long overdueDays = java.time.temporal.ChronoUnit.DAYS.between(nextReviewDate, planDate);
-            double overdueBonus = 1.0 + Math.min(0.5, overdueDays * 0.05);
+            double overdueBonus = 1.0 + Math.min(policy.getMaxOverdueBonus(), overdueDays * policy.getOverdueBonusPerDay());
             sumValue *= overdueBonus;
         }
 

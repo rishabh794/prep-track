@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.preptrack.auth.entity.User;
 import com.preptrack.auth.entity.UserSettings;
+import com.preptrack.config.EngineProperties;
 import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.auth.repository.UserSettingsRepository;
 import com.preptrack.common.exception.ResourceNotFoundException;
@@ -44,6 +45,7 @@ public class PlannerService {
     private final KnapsackSolver knapsackSolver;
     private final ReasonFormatter reasonFormatter;
     private final ObjectMapper objectMapper;
+    private final EngineProperties policy;
 
     @Transactional
     public DailyPlanResponse getOrCreatePlanForToday(Long userId, LocalDate date) {
@@ -100,17 +102,12 @@ public class PlannerService {
         }
 
         UserSettings settings = userSettingsRepository.findByUserId(userId)
-                .orElse(UserSettings.builder()
-                        .dailyTimeBudgetMin(90)
-                        .maxNewProblemsDay(3)
-                        .maxRevisionsDay(10)
-                        .targetSkillLevel(0.8)
-                        .build());
+                .orElseGet(() -> policy.defaultSettings(null));
 
-        int budget = settings.getDailyTimeBudgetMin() != null ? settings.getDailyTimeBudgetMin() : 90;
-        int maxReview = settings.getMaxRevisionsDay() != null ? settings.getMaxRevisionsDay() : 10;
-        int maxNew = settings.getMaxNewProblemsDay() != null ? settings.getMaxNewProblemsDay() : 3;
-        double targetSkill = settings.getTargetSkillLevel() != null ? settings.getTargetSkillLevel() : 0.8;
+        int budget = settings.getDailyTimeBudgetMin() != null ? settings.getDailyTimeBudgetMin() : policy.getDefaultBudgetMinutes();
+        int maxReview = settings.getMaxRevisionsDay() != null ? settings.getMaxRevisionsDay() : policy.getDefaultMaxRevisions();
+        int maxNew = settings.getMaxNewProblemsDay() != null ? settings.getMaxNewProblemsDay() : policy.getDefaultMaxNewProblems();
+        double targetSkill = settings.getTargetSkillLevel() != null ? settings.getTargetSkillLevel() : policy.getDefaultTargetSkill();
 
         int completedMinutes = preservedItems.stream()
                 .filter(i -> Boolean.TRUE.equals(i.getCompleted()))
@@ -202,17 +199,12 @@ public class PlannerService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
         UserSettings settings = userSettingsRepository.findByUserId(userId)
-                .orElse(UserSettings.builder()
-                        .dailyTimeBudgetMin(90)
-                        .maxNewProblemsDay(3)
-                        .maxRevisionsDay(10)
-                        .targetSkillLevel(0.8)
-                        .build());
+                .orElseGet(() -> policy.defaultSettings(null));
 
-        int budget = settings.getDailyTimeBudgetMin() != null ? settings.getDailyTimeBudgetMin() : 90;
-        int maxReview = settings.getMaxRevisionsDay() != null ? settings.getMaxRevisionsDay() : 10;
-        int maxNew = settings.getMaxNewProblemsDay() != null ? settings.getMaxNewProblemsDay() : 3;
-        double targetSkill = settings.getTargetSkillLevel() != null ? settings.getTargetSkillLevel() : 0.8;
+        int budget = settings.getDailyTimeBudgetMin() != null ? settings.getDailyTimeBudgetMin() : policy.getDefaultBudgetMinutes();
+        int maxReview = settings.getMaxRevisionsDay() != null ? settings.getMaxRevisionsDay() : policy.getDefaultMaxRevisions();
+        int maxNew = settings.getMaxNewProblemsDay() != null ? settings.getMaxNewProblemsDay() : policy.getDefaultMaxNewProblems();
+        double targetSkill = settings.getTargetSkillLevel() != null ? settings.getTargetSkillLevel() : policy.getDefaultTargetSkill();
 
         // 1. Collect candidates
         List<PlanCandidate> candidates = candidateCollector.collectCandidates(userId, targetSkill, planDate);

@@ -12,6 +12,9 @@ import java.util.Set;
 @Repository
 public interface SheetProblemRepository extends JpaRepository<SheetProblem, Long> {
 
+    @Query("SELECT sp FROM SheetProblem sp JOIN FETCH sp.sheet JOIN FETCH sp.problem")
+    List<SheetProblem> findAllWithSheetAndProblem();
+
     @Query("SELECT sp FROM SheetProblem sp JOIN FETCH sp.problem WHERE sp.sheet.id = :sheetId ORDER BY sp.displayOrder ASC")
     List<SheetProblem> findBySheetIdOrderByDisplayOrderAsc(@Param("sheetId") Long sheetId);
 

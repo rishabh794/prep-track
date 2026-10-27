@@ -3,6 +3,7 @@ package com.preptrack.auth.service;
 import com.preptrack.auth.dto.*;
 import com.preptrack.auth.entity.User;
 import com.preptrack.auth.entity.UserSettings;
+import com.preptrack.config.EngineProperties;
 import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.auth.repository.UserSettingsRepository;
 import com.preptrack.auth.security.JwtService;
@@ -25,6 +26,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final EngineProperties policy;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -41,14 +43,7 @@ public class AuthService {
                 .build();
         user = userRepository.save(user);
 
-        UserSettings settings = UserSettings.builder()
-                .user(user)
-                .dailyTimeBudgetMin(90)
-                .maxNewProblemsDay(3)
-                .maxRevisionsDay(10)
-                .targetSkillLevel(0.8)
-                .onboardingComplete(false)
-                .build();
+        UserSettings settings = policy.defaultSettings(user);
         userSettingsRepository.save(settings);
 
         UserDetailsImpl userDetails = UserDetailsImpl.build(user);

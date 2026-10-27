@@ -2,6 +2,7 @@ package com.preptrack.planner.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.preptrack.auth.entity.User;
+import com.preptrack.config.EngineProperties;
 import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.common.exception.ResourceNotFoundException;
 import com.preptrack.auth.entity.UserSettings;
@@ -39,6 +40,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PlannerServiceTest {
+    @Spy private EngineProperties policy = new EngineProperties();
 
     @Mock
     private DailyPlanRepository dailyPlanRepository;

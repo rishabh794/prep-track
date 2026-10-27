@@ -6,12 +6,14 @@ import com.preptrack.pattern.entity.UserPatternState;
 import com.preptrack.pattern.repository.ProblemPatternRepository;
 import com.preptrack.pattern.repository.UserPatternStateRepository;
 import com.preptrack.problem.entity.Problem;
+import com.preptrack.config.EngineProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ScoringEdgeCasesTest {
+    @Spy private EngineProperties policy = new EngineProperties();
 
     @Mock
     private ProblemPatternRepository problemPatternRepository;

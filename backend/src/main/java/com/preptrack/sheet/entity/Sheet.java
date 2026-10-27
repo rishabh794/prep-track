@@ -32,6 +32,12 @@ public class Sheet {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    @Column(name = "expected_problem_count")
+    private Integer expectedProblemCount;
+
+    @Column(name = "seed_version", length = 100)
+    private String seedVersion;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

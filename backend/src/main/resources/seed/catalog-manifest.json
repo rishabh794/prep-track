@@ -1,0 +1,29 @@
+{
+  "version": "2026-10-27.1",
+  "patternsResource": "seed/patterns.json",
+  "problemsResource": "seed/problems.json",
+  "relationsResource": "seed/relations.json",
+  "sheets": [
+    {
+      "name": "Blind 75",
+      "description": "Curated list of 75 essential LeetCode questions",
+      "sourceUrl": "https://leetcode.com/discuss/general-discussion/460599/blind-75-leetcode-questions",
+      "resource": "seed/blind75.json",
+      "expectedProblems": 75
+    },
+    {
+      "name": "NeetCode 150",
+      "description": "Structured DSA practice list; this catalog currently contains a subset",
+      "sourceUrl": "https://neetcode.io/practice",
+      "resource": "seed/neetcode150.json",
+      "expectedProblems": 150
+    },
+    {
+      "name": "Striver A-Z",
+      "description": "Selected problems from the Striver A-Z DSA course; full catalog size is not verified",
+      "sourceUrl": "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2",
+      "resource": "seed/striver_a2z.json",
+      "expectedProblems": null
+    }
+  ]
+}

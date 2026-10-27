@@ -25,7 +25,7 @@ class SimulatorCapacityTest {
         var config = new SimulationConfig(1, 1, 30, 1, 1, 0.8, 42L, null);
         var catalog = new SimulationCatalog("Test", List.of(), List.of(), Map.of());
         var result = new SimulationResult(UUID.randomUUID(), Instant.now(), "test", config, "Test", 0, 0,
-                List.of(), List.of(), List.of(), "test");
+                List.of(), List.of(), List.of(), null, "test");
         when(catalogs.load(null)).thenReturn(catalog);
         when(mapper.writeValueAsString(any())).thenReturn("{}");
         CountDownLatch started = new CountDownLatch(1);

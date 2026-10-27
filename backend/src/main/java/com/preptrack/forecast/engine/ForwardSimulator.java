@@ -3,17 +3,42 @@ package com.preptrack.forecast.engine;
 import com.preptrack.forecast.dto.PatternProjectionDto;
 import com.preptrack.forecast.dto.ReadinessForecastDto;
 import com.preptrack.forecast.dto.TriageStatus;
+import com.preptrack.forecast.dto.ForecastStatus;
+import com.preptrack.forecast.config.ForecastProperties;
+import com.preptrack.config.EngineProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDate;
 import java.util.*;
 
 @Component
 public class ForwardSimulator {
+
+    public static final String MODEL = "PATTERN_APPROXIMATION";
+    public static final String MODEL_VERSION = "2.0";
+    public static final List<String> LIMITATIONS = List.of(
+            "This is a pattern-level approximation, not a replay of the daily knapsack planner or a probability of passing an interview.",
+            "Future study uses deterministic learning assumptions and exponential retention; real completion, success rates, and memory vary.",
+            "New-problem time uses the current average estimate of available problems in each pattern. Multi-pattern problems can appear in more than one pattern pool.",
+            "Company weights are planning preferences, not verified question frequencies; low weights alone do not establish that a topic will be absent."
+    );
+    private final EngineProperties engine;
+    private final ForecastProperties properties;
+
+    @Autowired
+    public ForwardSimulator(EngineProperties engine, ForecastProperties properties) {
+        this.engine = engine;
+        this.properties = properties;
+    }
+
+    public ForwardSimulator() {
+        this(new EngineProperties(), new ForecastProperties());
+    }
 
     @Data
     @Builder
@@ -26,6 +51,7 @@ public class ForwardSimulator {
         private Integer daysSinceLastPracticed; // null if never practiced
         private int availableProblems;
         private double companyRelevance; // 1.0 default, lower for low-frequency
+        private Integer estimatedProblemMinutes;
     }
 
     public static class SimState {
@@ -35,18 +61,20 @@ public class ForwardSimulator {
         Integer daysSinceLastPracticed;
         int availableProblems;
         double companyRelevance;
+        int estimatedProblemMinutes;
 
         double simSkill;
         double simStability;
         Integer simLastPracticedDay; // relative day (1..N) or null
 
-        public SimState(PatternSnapshot snapshot) {
+        public SimState(PatternSnapshot snapshot, double initialStability) {
             this.patternName = snapshot.getPatternName();
             this.initialSkill = snapshot.getCurrentSkill();
-            this.initialStability = snapshot.getCurrentStability() <= 0.0 ? 1.0 : snapshot.getCurrentStability();
+            this.initialStability = snapshot.getCurrentStability() <= 0.0 ? initialStability : snapshot.getCurrentStability();
             this.daysSinceLastPracticed = snapshot.getDaysSinceLastPracticed();
             this.availableProblems = snapshot.getAvailableProblems();
             this.companyRelevance = snapshot.getCompanyRelevance() > 0 ? snapshot.getCompanyRelevance() : 1.0;
+            this.estimatedProblemMinutes = snapshot.getEstimatedProblemMinutes() == null ? 0 : snapshot.getEstimatedProblemMinutes();
 
             this.simSkill = this.initialSkill;
             this.simStability = this.initialStability;
@@ -77,15 +105,16 @@ public class ForwardSimulator {
             double targetSkill,
             List<PatternSnapshot> snapshots
     ) {
-        long effectiveDays = Math.max(0, Math.min(daysRemaining, 60)); // Horizon cap at 60 days for simulation
-        int budget = dailyBudgetMin > 0 ? dailyBudgetMin : 90;
-        int maxNew = maxNewProblemsDay > 0 ? maxNewProblemsDay : 3;
-        int maxRev = maxRevisionsDay > 0 ? maxRevisionsDay : 10;
-        double target = targetSkill > 0 ? targetSkill : 0.8;
+        long effectiveDays = Math.max(0, Math.min(daysRemaining, properties.getMaxHorizonDays()));
+        int budget = dailyBudgetMin > 0 ? dailyBudgetMin : engine.getDefaultBudgetMinutes();
+        int maxNew = Math.max(0, maxNewProblemsDay);
+        int maxRev = Math.max(0, maxRevisionsDay);
+        double target = Math.max(0.0, Math.min(1.0, targetSkill));
+        int recallMinutes = engine.getRecallMinutes();
 
         List<SimState> simStates = new ArrayList<>();
         for (PatternSnapshot p : snapshots) {
-            simStates.add(new SimState(p));
+            simStates.add(new SimState(p, engine.getInitialStability()));
         }
 
         // Simulate day-by-day for d = 1..effectiveDays
@@ -97,7 +126,7 @@ public class ForwardSimulator {
             for (SimState s : simStates) {
                 if (s.simLastPracticedDay != null || s.daysSinceLastPracticed != null) {
                     double ret = s.getRetentionAtDay(d);
-                    if (ret < 0.70) {
+                    if (ret < properties.getReviewTriggerRetention()) {
                         revisionCandidates.add(s);
                     }
                 }
@@ -109,14 +138,14 @@ public class ForwardSimulator {
 
             int revisionsDone = 0;
             for (SimState s : revisionCandidates) {
-                if (revisionsDone >= maxRev || remainingTime < 5) {
+                if (revisionsDone >= maxRev || remainingTime < recallMinutes) {
                     break;
                 }
                 // Perform revision (5 min baseline)
-                s.simStability = Math.min(365.0, s.simStability * 1.45);
-                s.simSkill = Math.min(1.0, s.simSkill + 0.02);
+                s.simStability = Math.min(engine.getMaxStability(), s.simStability * properties.getRevisionStabilityMultiplier());
+                s.simSkill = Math.min(1.0, s.simSkill + properties.getRevisionSkillGain());
                 s.simLastPracticedDay = d;
-                remainingTime -= 5;
+                remainingTime -= recallMinutes;
                 revisionsDone++;
             }
 
@@ -137,15 +166,17 @@ public class ForwardSimulator {
 
             int newProblemsDone = 0;
             for (SimState s : acquisitionCandidates) {
-                if (newProblemsDone >= maxNew || remainingTime < 30) {
+                if (newProblemsDone >= maxNew) {
                     break;
                 }
+                int minutes = s.estimatedProblemMinutes > 0 ? s.estimatedProblemMinutes : engine.getDefaultProblemMinutes();
+                if (remainingTime < minutes) continue;
                 // Perform new problem solve
-                s.simSkill = Math.min(1.0, s.simSkill + 0.10);
-                s.simStability = Math.min(365.0, s.simStability * 1.40);
+                s.simSkill = Math.min(1.0, s.simSkill + engine.getIndependentSolveSkillGain());
+                s.simStability = Math.min(engine.getMaxStability(), s.simStability * properties.getNewProblemStabilityMultiplier());
                 s.simLastPracticedDay = d;
                 s.availableProblems--;
-                remainingTime -= 30;
+                remainingTime -= minutes;
                 newProblemsDone++;
             }
         }
@@ -202,6 +233,17 @@ public class ForwardSimulator {
                 .interviewDate(interviewDate)
                 .companyName(companyName != null ? companyName : "Upcoming")
                 .daysRemaining(daysRemaining)
+                .status(ForecastStatus.AVAILABLE)
+                .dailyBudgetMinutes(budget)
+                .maxNewProblemsDay(maxNew)
+                .maxRevisionsDay(maxRev)
+                .targetSkillLevel(target)
+                .simulationDays((int) effectiveDays)
+                .horizonCapped(daysRemaining > effectiveDays)
+                .model(MODEL)
+                .modelVersion(MODEL_VERSION)
+                .policyVersion(engine.getPolicyVersion())
+                .limitations(LIMITATIONS)
                 .overallReadiness(overallReadiness)
                 .patternProjections(projections)
                 .recommendations(recommendations)
@@ -226,7 +268,7 @@ public class ForwardSimulator {
             double targetSkill
     ) {
         // 1. CONSIDER_DROPPING condition:
-        // Strictly low company frequency or low initial skill on low-relevance pattern with short horizon
+        // Low configured priority or low initial skill with a short horizon.
         if (s.companyRelevance <= 0.5 && projSkill < 0.40) {
             return TriageStatus.CONSIDER_DROPPING;
         }
@@ -275,12 +317,12 @@ public class ForwardSimulator {
             }
         }
 
-        // 3. CONSIDER_DROPPING advice strictly for low company frequency patterns
+        // 3. Low configured priority is a planning preference, not measured company frequency.
         for (PatternProjectionDto p : projections) {
             if (p.getStatus() == TriageStatus.CONSIDER_DROPPING
                     && p.getCompanyRelevance() != null && p.getCompanyRelevance() <= 0.5
                     && recommendations.size() < 3) {
-                recommendations.add(String.format("%s problems are low-frequency for %s — consider dropping to save 3 sessions",
+                recommendations.add(String.format("%s has a low configured priority for %s — consider reducing its allocation after checking your interview requirements",
                         p.getPattern(), company));
                 break;
             }

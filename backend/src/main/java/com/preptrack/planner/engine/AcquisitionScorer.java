@@ -8,6 +8,7 @@ import com.preptrack.pattern.repository.UserPatternStateRepository;
 import com.preptrack.planner.dto.PatternContribution;
 import com.preptrack.planner.dto.ValueBreakdown;
 import com.preptrack.problem.entity.Problem;
+import com.preptrack.config.EngineProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,7 @@ public class AcquisitionScorer {
     private final ProblemPatternRepository problemPatternRepository;
     private final UserPatternStateRepository userPatternStateRepository;
     private final InterviewRelevanceCalculator interviewRelevanceCalculator;
+    private final EngineProperties policy;
 
     public static class ScoredResult {
         public double value;
@@ -129,7 +131,7 @@ public class AcquisitionScorer {
 
         double diversityMultiplier = 1.0;
         if (primaryPatternId != null && scheduledNewPrimaryPatterns != null && scheduledNewPrimaryPatterns.contains(primaryPatternId)) {
-            diversityMultiplier = 0.5;
+            diversityMultiplier = policy.getDiversityMultiplier();
             sumValue *= diversityMultiplier;
         }
 

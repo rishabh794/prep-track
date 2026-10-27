@@ -42,7 +42,7 @@ export const ForecastPage: React.FC = () => {
           animation: 'spin 0.8s linear infinite'
         }} />
         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          Forward-simulating preparation timeline to your interview date...
+          Estimating preparation from your current study settings...
         </p>
         <style>{`
           @keyframes spin {
@@ -69,6 +69,24 @@ export const ForecastPage: React.FC = () => {
             <button onClick={fetchForecast} className="btn btn-primary btn-sm">
               Retry Simulation
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (forecast.status !== 'AVAILABLE') {
+    const needsSheets = forecast.status === 'ONBOARDING_REQUIRED' || forecast.status === 'INSUFFICIENT_DATA';
+    return (
+      <div style={{ maxWidth: '620px', margin: '64px auto', padding: '0 24px' }}>
+        <div className="glass-panel" style={{ padding: '32px' }} role="status">
+          <h1 style={{ fontSize: '1.5rem', marginBottom: '12px' }}>
+            {forecast.status === 'INTERVIEW_PASSED' ? 'Interview date has passed' : 'Forecast needs preparation data'}
+          </h1>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>{forecast.statusMessage}</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+            {needsSheets && <Link className="btn btn-primary" to="/settings">Choose problem sheets</Link>}
+            <Link className="btn btn-secondary" to="/interviews">Back to interviews</Link>
           </div>
         </div>
       </div>
@@ -142,7 +160,11 @@ export const ForecastPage: React.FC = () => {
             </span>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '6px' }}>
-            Scheduled Loop: <strong style={{ color: '#fff' }}>{forecast.interviewDate}</strong> • Forward-simulating 90m daily knapsack planner
+            Interview: <strong style={{ color: '#fff' }}>{forecast.interviewDate}</strong> · {forecast.dailyBudgetMinutes} minutes/day · {forecast.simulationDays} simulated days
+          </p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.825rem', marginTop: '8px' }}>
+            Approximate projection through {forecast.projectedThroughDate}, using settings and progress as of {forecast.asOfDate}.
+            {forecast.horizonCapped && ' Your interview is beyond the supported forecast horizon.'}
           </p>
         </div>
 
@@ -154,6 +176,13 @@ export const ForecastPage: React.FC = () => {
           <span>⟳</span> Re-simulate Timeline
         </button>
       </div>
+
+      <details className="glass-panel" style={{ padding: '18px 24px', marginBottom: '24px' }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Forecast assumptions and limits</summary>
+        <ul style={{ paddingLeft: '20px', marginTop: '12px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+          {forecast.limitations.map(limitation => <li key={limitation} style={{ margin: '8px 0' }}>{limitation}</li>)}
+        </ul>
+      </details>
 
       {/* Top Grid: Overall Readiness Gauge + Triage Recommendations */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '32px' }}>
@@ -261,7 +290,7 @@ export const ForecastPage: React.FC = () => {
               Pattern Mastery Projections
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.825rem' }}>
-              Estimated skill acquisition and retention score at interview date ({forecast.interviewDate})
+              Estimated skill and retention through {forecast.projectedThroughDate}
             </p>
           </div>
 

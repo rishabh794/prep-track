@@ -54,6 +54,9 @@ export interface AvailableSheet {
   description: string;
   sourceUrl?: string;
   totalProblems: number;
+  expectedProblems?: number | null;
+  countStatus?: 'COMPLETE' | 'INCOMPLETE' | 'COUNT_MISMATCH' | 'UNVERIFIED';
+  seedVersion?: string | null;
 }
 
 export interface UserSheet {
@@ -271,7 +274,21 @@ export interface ReadinessForecast {
   interviewDate: string;
   companyName: string;
   daysRemaining: number;
-  overallReadiness: number;
+  overallReadiness: number | null;
+  status: 'AVAILABLE' | 'ONBOARDING_REQUIRED' | 'INSUFFICIENT_DATA' | 'INTERVIEW_PASSED';
+  statusMessage: string;
+  dailyBudgetMinutes: number;
+  maxNewProblemsDay: number;
+  maxRevisionsDay: number;
+  targetSkillLevel: number;
+  simulationDays: number;
+  asOfDate: string;
+  projectedThroughDate: string;
+  horizonCapped: boolean;
+  model: string;
+  modelVersion: string;
+  policyVersion: string;
+  limitations: string[];
   patternProjections: PatternProjection[];
   recommendations: string[];
 }

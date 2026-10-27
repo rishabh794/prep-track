@@ -9,6 +9,7 @@ import com.preptrack.application.repository.InterviewRepository;
 import com.preptrack.auth.dto.UserSettingsDto;
 import com.preptrack.auth.entity.User;
 import com.preptrack.auth.entity.UserSettings;
+import com.preptrack.config.EngineProperties;
 import com.preptrack.auth.repository.UserRepository;
 import com.preptrack.auth.repository.UserSettingsRepository;
 import com.preptrack.common.exception.BadRequestException;
@@ -44,6 +45,7 @@ public class OnboardingService {
     private final UserSheetRepository userSheetRepository;
     private final ApplicationRepository applicationRepository;
     private final InterviewRepository interviewRepository;
+    private final EngineProperties policy;
 
     @Transactional
     public SheetSelectionResponse selectSheets(String email, SheetSelectionRequest request) {
@@ -100,7 +102,7 @@ public class OnboardingService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
 
         UserSettings settings = userSettingsRepository.findByUserId(user.getId())
-                .orElseGet(() -> UserSettings.builder().user(user).build());
+                .orElseGet(() -> policy.defaultSettings(user));
 
         if (request.getDailyTimeBudgetMin() != null) {
             settings.setDailyTimeBudgetMin(request.getDailyTimeBudgetMin());
@@ -166,7 +168,7 @@ public class OnboardingService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
 
         UserSettings settings = userSettingsRepository.findByUserId(user.getId())
-                .orElseGet(() -> UserSettings.builder().user(user).build());
+                .orElseGet(() -> policy.defaultSettings(user));
 
         settings.setOnboardingComplete(true);
         settings = userSettingsRepository.save(settings);

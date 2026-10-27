@@ -35,5 +35,6 @@ export interface SimulationResult {
     prepTrackHigher: boolean;
   }[];
   caveats: string[];
+  enginePolicy?: { policyVersion: string; [key: string]: unknown } | null;
   textSummary: string;
 }

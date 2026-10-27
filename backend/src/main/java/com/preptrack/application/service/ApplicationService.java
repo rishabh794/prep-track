@@ -1,5 +1,7 @@
 package com.preptrack.application.service;
 
+import com.preptrack.config.EngineProperties;
+
 import com.preptrack.ai.dto.ConfirmTopicsRequest;
 import com.preptrack.ai.dto.ExtractedPatternDto;
 import com.preptrack.ai.dto.FeedbackExtractionResult;
@@ -41,6 +43,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ApplicationService {
+    private final EngineProperties policy;
 
     private final ApplicationRepository applicationRepository;
     private final InterviewRepository interviewRepository;
@@ -167,7 +170,7 @@ public class ApplicationService {
                 if (wasWeak && !wasAlreadyConfirmed) {
                     UserPatternState state = patternStateService.getOrCreatePatternState(user, pattern);
                     double decayedBoost = interviewRelevanceCalculator.getEffectiveInterviewBoost(state, LocalDate.now());
-                    double newBoost = Math.min(0.6, decayedBoost + 0.3);
+                    double newBoost = Math.min(policy.getMaxInterviewBoost(), decayedBoost + policy.getTopicConfirmedBoost());
                     state.setInterviewBoost(newBoost);
                     state.setInterviewBoostSetAt(LocalDateTime.now());
                     userPatternStateRepository.save(state);

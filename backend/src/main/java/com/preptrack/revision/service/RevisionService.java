@@ -12,6 +12,7 @@ import com.preptrack.attempt.entity.ProblemStatus;
 import com.preptrack.attempt.entity.UserProblemStatus;
 import com.preptrack.attempt.repository.UserProblemStatusRepository;
 import com.preptrack.auth.entity.User;
+import com.preptrack.config.EngineProperties;
 import com.preptrack.common.exception.BadRequestException;
 import com.preptrack.common.exception.ResourceNotFoundException;
 import com.preptrack.pattern.entity.ProblemPattern;
@@ -54,6 +55,8 @@ public class RevisionService {
     private final com.preptrack.problem.repository.ProblemRepository problemRepository;
     private final com.preptrack.auth.repository.UserRepository userRepository;
     private final com.preptrack.pattern.repository.UserPatternStateRepository userPatternStateRepository;
+    private final EngineProperties policy;
+    private final RevisionSchedulingPolicy schedulingPolicy;
 
     @Transactional
     public RevisionScheduledDto scheduleRevision(User user, Problem problem, AttemptOutcome outcome, FollowUpType followUpType) {
@@ -87,28 +90,21 @@ public class RevisionService {
                     }
                 }
                 if (minStability == Double.MAX_VALUE) {
-                    minStability = 8.4;
+                    minStability = policy.getRevisionFallbackStability();
                 }
-                int stabilityDays = (int) Math.max(1, Math.round(-Math.log(0.70) * minStability));
-                int countDays = switch (reviewCount) {
-                    case 1 -> 3;
-                    case 2 -> 7;
-                    case 3 -> 14;
-                    default -> 30;
-                };
-                int days = Math.max(1, Math.min(countDays, stabilityDays));
+                int days = schedulingPolicy.intervalDays(outcome, reviewCount, false, minStability);
                 nextReviewDate = today.plusDays(days);
             } else {
-                nextReviewDate = today.plusDays(1);
+                nextReviewDate = today.plusDays(policy.getRevisionRetryDays());
             }
             card.setNextReviewDate(nextReviewDate);
             revisionCardRepository.save(card);
         } else {
             // First time attempt - create revision card
             if (outcome == AttemptOutcome.SOLVED_INDEPENDENTLY) {
-                nextReviewDate = today.plusDays(3);
+                nextReviewDate = today.plusDays(policy.revisionIntervalDays(1));
             } else {
-                nextReviewDate = today.plusDays(1);
+                nextReviewDate = today.plusDays(policy.getRevisionRetryDays());
             }
 
             card = RevisionCard.builder()
